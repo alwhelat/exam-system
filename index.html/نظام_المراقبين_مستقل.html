@@ -6,7 +6,6 @@
 <title>نظام توزيع مراقبي الامتحانات — جامعة الفارابي 2025/2026</title>
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
@@ -827,18 +826,27 @@ function distribute(day,selected,ec,er){
     const sup=sups.find(s=>!usedS.has(s.id)&&!usedM.has(s.id))||null;
     if(sup) usedS.add(sup.id);
     const assigns=[]; const slots=needed-1;
-    if(slots>=2){
-      const m=males.find(s=>!usedM.has(s.id)&&!usedS.has(s.id))||null;
-      const f=females.find(s=>!usedM.has(s.id)&&!usedS.has(s.id)&&s.id!==(m?m.id:-1))||null;
-      if(m){assigns.push(m);usedM.add(m.id);}
-      if(f){assigns.push(f);usedM.add(f.id);}
-      for(let i=assigns.length;i<slots;i++){
-        const nx=mons.find(s=>!usedM.has(s.id)&&!usedS.has(s.id))||null;
+    if(slots>=1){
+      const supGender=sup?sup.gender:null;
+      let hasMale=supGender==='male', hasFemale=supGender==='female';
+      // ── شرط إلزامي: يجب وجود ذكر وأنثى في كل قاعة ──
+      if(!hasFemale){
+        const f=females.find(s=>!usedM.has(s.id)&&!usedS.has(s.id));
+        if(f){assigns.push(f);usedM.add(f.id);hasFemale=true;}
+      }
+      if(!hasMale && assigns.length<slots){
+        const m=males.find(s=>!usedM.has(s.id)&&!usedS.has(s.id));
+        if(m){assigns.push(m);usedM.add(m.id);hasMale=true;}
+      }
+      // ── ملء المقاعد المتبقية مع الحفاظ على التوازن ──
+      while(assigns.length<slots){
+        const cM=assigns.filter(a=>a&&a.gender==='male').length+(supGender==='male'?1:0);
+        const cF=assigns.filter(a=>a&&a.gender==='female').length+(supGender==='female'?1:0);
+        let nx=cM<=cF
+          ? (males.find(s=>!usedM.has(s.id)&&!usedS.has(s.id))||mons.find(s=>!usedM.has(s.id)&&!usedS.has(s.id)))
+          : (females.find(s=>!usedM.has(s.id)&&!usedS.has(s.id))||mons.find(s=>!usedM.has(s.id)&&!usedS.has(s.id)));
         if(nx){assigns.push(nx);usedM.add(nx.id);}else assigns.push(null);
       }
-    } else if(slots===1){
-      const nx=mons.find(s=>!usedM.has(s.id)&&!usedS.has(s.id))||null;
-      if(nx){assigns.push(nx);usedM.add(nx.id);}else assigns.push(null);
     }
     dist[hname]={supervisor:sup,monitors:assigns,hall};
   }
@@ -1855,104 +1863,99 @@ function exportRecordPDF(id) {
 }
 
 function _genPDF(dist, reserve, day, date, session, rawDate) {
-  const th  = 'background:#1E3A8A;color:#fff;padding:5pt 7pt;text-align:right;border:1pt solid #374151;font-size:9pt;font-weight:700';
-  const tdB = bg => `background:${bg};border:1pt solid #9ca3af;padding:5pt 7pt;font-size:9pt`;
-  const sig = 'border:1pt solid #9ca3af;min-width:60pt;background:#fafafa;padding:5pt';
-
+  const th = 'background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;border:1pt solid #374151;font-weight:700';
   let distRows = '', ri = 0;
   for (const [hname, d] of Object.entries(dist)) {
     const tot = 1 + d.monitors.length;
     const bg  = ri % 2 === 0 ? '#EEF2FF' : '#FFFFFF';
     const supName = d.supervisor ? d.supervisor.name : '—';
     distRows += `<tr>
-      <td rowspan="${tot}" style="text-align:center;font-weight:800;font-size:9pt;background:#dbeafe;border:1pt solid #6b7280;vertical-align:middle;padding:5pt">${hname}</td>
-      <td style="${tdB(bg)}">مشرف القاعة</td>
-      <td style="${tdB(bg)}">${supName}</td>
-      <td style="${sig}"></td>
+      <td rowspan="${tot}" style="text-align:center;font-weight:800;background:#dbeafe;border:1pt solid #6b7280;vertical-align:middle;padding:5pt">${hname}</td>
+      <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt">مشرف القاعة</td>
+      <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt">${supName}</td>
+      <td style="border:1pt solid #9ca3af;min-width:70pt;background:#fafafa;padding:5pt"></td>
     </tr>`;
     d.monitors.forEach((m, i) => {
       distRows += `<tr>
-        <td style="${tdB(bg)}">مراقب ${i + 1}</td>
-        <td style="${tdB(bg)}">${m ? m.name : '—'}</td>
-        <td style="${sig}"></td>
+        <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt">مراقب ${i+1}</td>
+        <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt">${m ? m.name : '—'}</td>
+        <td style="border:1pt solid #9ca3af;min-width:70pt;background:#fafafa;padding:5pt"></td>
       </tr>`;
     });
     ri++;
   }
-
   let resRows = '';
   reserve.forEach((s, i) => {
     const bg = i % 2 === 0 ? '#FFF7ED' : '#FFFFFF';
     resRows += `<tr>
-      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;text-align:center;font-size:9pt">${i + 1}</td>
-      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;font-size:9pt">${s.name}</td>
-      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;font-size:9pt">${s.dept || ''}</td>
-      <td style="border:1pt solid #d1d5db;min-width:60pt;background:#fafafa;padding:5pt"></td>
+      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;text-align:center">${i+1}</td>
+      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt">${s.name}</td>
+      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt">${s.dept||''}</td>
+      <td style="border:1pt solid #d1d5db;min-width:70pt;background:#fafafa;padding:5pt"></td>
     </tr>`;
   });
-
   const sesLine = session ? `&nbsp;&nbsp; الدورة: <strong>${session}</strong>` : '';
-  const now     = new Date().toLocaleString('ar-IQ');
+  const now = new Date().toLocaleString('ar-IQ');
+  const ds  = (rawDate||new Date().toISOString().slice(0,10)).replace(/\//g,'-');
 
-  // Loading overlay
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(13,27,110,.82);z-index:99999;display:flex;align-items:center;justify-content:center';
-  overlay.innerHTML = `<div style="background:#fff;padding:28px 38px;border-radius:14px;text-align:center;direction:rtl;font-family:Arial,Tahoma,sans-serif">
-    <div style="font-size:32px;margin-bottom:10px">📋</div>
-    <div style="font-size:15px;font-weight:800;color:#0d1b6e;margin-bottom:6px">جاري إنشاء PDF...</div>
-    <div style="font-size:12px;color:#888">الرجاء الانتظار بضع ثوانٍ</div>
-  </div>`;
-  document.body.appendChild(overlay);
+  const htmlStr = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+<title>توزيع المراقبين — ${day} ${date}</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,'Traditional Arabic',Tahoma,sans-serif;direction:rtl;color:#111;font-size:11pt}
+table{border-collapse:collapse;width:100%;margin-bottom:14pt}
+h1{text-align:center;font-size:15pt;color:#0d1b6e;margin-bottom:4pt}
+h2{font-size:12pt;color:#92400e;margin:12pt 0 5pt;border-right:3pt solid #f59e0b;padding-right:6pt}
+.uni{text-align:center;font-size:14pt;color:#1e3a8a;font-weight:700;margin-bottom:2pt}
+.info{text-align:center;font-size:10pt;margin:8pt 0;padding:5pt 0;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
+.footer{text-align:center;font-size:8pt;color:#9ca3af;margin-top:12pt;border-top:1px solid #e5e7eb;padding-top:5pt}
+@media screen{
+  .bar{position:fixed;top:0;left:0;right:0;background:#0d1b6e;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:14px;z-index:999;flex-wrap:wrap}
+  .content{margin-top:58px;padding:16px}
+}
+@media print{
+  .bar{display:none!important}
+  .content{margin-top:0;padding:0}
+  body{padding:1cm}
+}
+</style></head><body>
+<div class="bar">
+  <button onclick="window.print()" style="background:#fff;color:#0d1b6e;border:none;padding:9px 26px;border-radius:7px;font-weight:800;cursor:pointer;font-size:14px;font-family:inherit">🖨 طباعة / حفظ PDF</button>
+  <span style="color:#fff;font-size:12px">اختر <strong>Save as PDF</strong> أو <strong>Microsoft Print to PDF</strong> من قائمة الطابعات</span>
+  <button onclick="window.close()" style="background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.35);padding:8px 18px;border-radius:7px;cursor:pointer;font-size:12px;font-family:inherit">✕ إغلاق</button>
+</div>
+<div class="content">
+  <div class="uni">جـامـعـة الـفـارابـي</div>
+  <h1>جدول توزيع مراقبي الامتحانات النهائية</h1>
+  <div class="info">اليوم: <strong>${day}</strong> &nbsp;&nbsp; التاريخ: <strong>${date}</strong>${sesLine}</div>
+  <table>
+    <thead><tr>
+      <th style="${th};width:11%;text-align:center">القاعة</th>
+      <th style="${th};width:19%">الدور</th>
+      <th style="${th};width:42%">الاسم</th>
+      <th style="${th};width:28%;text-align:center">التوقيع</th>
+    </tr></thead>
+    <tbody>${distRows}</tbody>
+  </table>
+  ${reserve.length ? `<h2>قائمة الاحتياط (${reserve.length} شخص)</h2>
+  <table>
+    <thead><tr>
+      <th style="${th};width:7%;text-align:center">#</th>
+      <th style="${th};width:40%">الاسم</th>
+      <th style="${th};width:25%">القسم</th>
+      <th style="${th};width:28%;text-align:center">التوقيع</th>
+    </tr></thead>
+    <tbody>${resRows}</tbody>
+  </table>` : ''}
+  <div class="footer">تم الإنشاء: ${now} | القاعات: ${Object.keys(dist).length} | الاحتياط: ${reserve.length} | جامعة الفارابي — لجنة الامتحانات</div>
+</div>
+</body></html>`;
 
-  const el = document.createElement('div');
-  el.style.cssText = 'position:absolute;top:0;right:0;width:750px;background:#fff;direction:rtl;font-family:Arial,Tahoma,sans-serif;padding:25px 30px;font-size:11pt;color:#111;z-index:-1';
-  el.innerHTML = `
-    <div style="text-align:center;font-size:13pt;color:#1e3a8a;font-weight:700;margin-bottom:3pt">جـامـعـة الـفـارابـي</div>
-    <h1 style="text-align:center;font-size:14pt;color:#0d1b6e;margin:0 0 5pt">جدول توزيع مراقبي الامتحانات النهائية</h1>
-    <div style="text-align:center;font-size:10pt;margin:6pt 0;padding:4pt 0;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb">
-      اليوم: <strong>${day}</strong> &nbsp;&nbsp; التاريخ: <strong>${date}</strong>${sesLine}
-    </div>
-    <table style="border-collapse:collapse;width:100%;margin-bottom:10pt">
-      <thead><tr>
-        <th style="${th};width:11%;text-align:center">القاعة</th>
-        <th style="${th};width:19%">الدور</th>
-        <th style="${th};width:42%">الاسم</th>
-        <th style="${th};width:28%;text-align:center">التوقيع</th>
-      </tr></thead>
-      <tbody>${distRows}</tbody>
-    </table>
-    ${reserve.length ? `<h2 style="font-size:11pt;color:#92400e;margin:10pt 0 5pt;border-right:3pt solid #f59e0b;padding-right:6pt">قائمة الاحتياط (${reserve.length} شخص)</h2>
-    <table style="border-collapse:collapse;width:100%;margin-bottom:10pt">
-      <thead><tr>
-        <th style="${th};width:7%;text-align:center">#</th>
-        <th style="${th};width:40%">الاسم</th>
-        <th style="${th};width:25%">القسم</th>
-        <th style="${th};width:28%;text-align:center">التوقيع</th>
-      </tr></thead>
-      <tbody>${resRows}</tbody>
-    </table>` : ''}
-    <div style="text-align:center;font-size:8pt;color:#9ca3af;margin-top:10pt;border-top:1px solid #e5e7eb;padding-top:4pt">
-      تم الإنشاء: ${now} | القاعات: ${Object.keys(dist).length} | الاحتياط: ${reserve.length} | جامعة الفارابي — لجنة الامتحانات
-    </div>`;
-
-  document.body.appendChild(el);
-  const ds = (rawDate || new Date().toISOString().slice(0, 10)).replace(/\//g, '-');
-
-  setTimeout(() => {
-    html2pdf().from(el).set({
-      margin:      [8, 8, 8, 8],
-      filename:    `توزيع_${day}_${ds}.pdf`,
-      image:       { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, allowTaint: true, scrollX: 0, scrollY: 0 },
-      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).save()
-      .then(() => { document.body.removeChild(el); document.body.removeChild(overlay); })
-      .catch(err => {
-        document.body.removeChild(el); document.body.removeChild(overlay);
-        console.error('PDF error:', err);
-        alert('تعذّر إنشاء PDF. جرّب متصفح Chrome أو Edge، أو تأكد من اتصالك بالإنترنت.');
-      });
-  }, 200);
+  const w = window.open('', '_blank', 'width=1050,height=780,scrollbars=yes,resizable=yes');
+  if (!w) { alert('يرجى السماح بالنوافذ المنبثقة في المتصفح ثم كرر العملية'); return; }
+  w.document.write(htmlStr);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { try { w.print(); } catch(e) {} }, 700);
 }
 
 // ─────────────────────────────────────────
