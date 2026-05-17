@@ -177,6 +177,14 @@ tr:hover td{background:#eef2ff}
 .admin-section{background:#fff;border-radius:10px;padding:13px 15px;margin-bottom:11px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .fb-spin{width:46px;height:46px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .75s linear infinite}
+/* ── تقويمي ── */
+.tq-toggle{font-size:9px;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:4px;padding:1px 5px;cursor:pointer;font-weight:800;user-select:none;transition:all .15s;flex-shrink:0;white-space:nowrap}
+.tq-toggle.on{background:#dc2626;color:#fff;border-color:#b91c1c}
+.hchk.tq-hall{background:#fff5f5!important;border-color:#fca5a5!important}
+.hall-block.tq{border:2px solid #dc2626!important}
+.hall-block.tq .hall-hdr{background:#fee2e2!important}
+.tq-label{display:inline-block;background:#dc2626;color:#fff;font-size:9px;font-weight:800;padding:1px 7px;border-radius:20px;margin-right:5px;vertical-align:middle}
+.tq-his{background:#fee2e2!important}
 </style>
 </head>
 <body>
@@ -340,8 +348,9 @@ tr:hover td{background:#eef2ff}
     <!-- Hall selection -->
     <div class="card">
       <div class="ct">
-        <span>🏛 اختيار القاعات</span>
-        <div style="display:flex;gap:6px">
+        <span>🏛 اختيار القاعات &nbsp;<span style="font-size:10px;color:#888;font-weight:400">— اضغط زر <strong style="background:#fee2e2;color:#b91c1c;border-radius:3px;padding:0 4px">ت</strong> على القاعة لتحديدها كقاعة امتحان تقويمي (أولوية قصوى + تلوين أحمر)</span></span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span id="tq-count-badge" style="font-size:11px;color:#dc2626;font-weight:800"></span>
           <button class="btn" style="font-size:11px;padding:3px 9px" onclick="selAllHalls(true)">الكل</button>
           <button class="btn" style="font-size:11px;padding:3px 9px" onclick="selAllHalls(false)">لا شيء</button>
         </div>
@@ -629,6 +638,7 @@ let lastDist=null, lastReserve=[], lastRemaining=[];
 let staffWb=null, hallsWb=null;
 let RECORDS = lsGet(LS_RECORDS, []);
 let HISTORY = lsGet(LS_HISTORY, {});
+let TAKMILI_HALLS = new Set();
 
 // ─────────────────────────────────────────
 // LOCAL STORAGE HELPERS
@@ -653,11 +663,15 @@ function rebuildHistoryFromRecords() {
 }
 
 function applyRecordToHistory(rec) {
+  const tqSet=new Set(rec.takmiliHalls||[]);
   function add(name, role, hall) {
     if(!name) return;
-    if(!HISTORY[name]) HISTORY[name]={count:0,sessions:[]};
+    if(!HISTORY[name]) HISTORY[name]={count:0,takmiliCount:0,sessions:[]};
+    if(!HISTORY[name].takmiliCount) HISTORY[name].takmiliCount=0;
     HISTORY[name].count++;
-    HISTORY[name].sessions.push({day:rec.day,date:rec.date,session:rec.session||'',hall,role,recId:rec.id});
+    const isTq=tqSet.has(hall);
+    if(isTq) HISTORY[name].takmiliCount++;
+    HISTORY[name].sessions.push({day:rec.day,date:rec.date,session:rec.session||'',hall,role,recId:rec.id,isTakmili:isTq});
   }
   for(const h of rec.halls) {
     if(h.supervisor) add(h.supervisor,'مشرف',h.hall);
@@ -784,8 +798,10 @@ function buildHallGrid(){
     const d=document.createElement('div');
     d.className='hchk sel'; d.id='hc-'+h.name;
     d.innerHTML=`<input type="checkbox" checked id="ch-${h.name}">
-      <span class="hb">${h.name}</span><span class="hc">(${h.monitors_needed})</span>`;
-    d.onclick=()=>{
+      <span class="hb">${h.name}</span><span class="hc">(${h.monitors_needed})</span>
+      <button class="tq-toggle" id="tqb-${h.name}" onclick="toggleTakmili('${h.name}',this,event)">ت</button>`;
+    d.onclick=(e)=>{
+      if(e.target.classList.contains('tq-toggle')) return;
       const cb=document.getElementById('ch-'+h.name);
       cb.checked=!cb.checked; d.classList.toggle('sel',cb.checked);
       document.getElementById('s-halls').textContent=getSelectedHalls().length;
@@ -793,6 +809,25 @@ function buildHallGrid(){
     g.appendChild(d);
   });
   document.getElementById('s-halls').textContent=HALLS.length;
+}
+function toggleTakmili(hname, btn, event){
+  event.stopPropagation();
+  if(TAKMILI_HALLS.has(hname)){
+    TAKMILI_HALLS.delete(hname);
+    btn.classList.remove('on');
+    document.getElementById('hc-'+hname).classList.remove('tq-hall');
+  } else {
+    TAKMILI_HALLS.add(hname);
+    btn.classList.add('on');
+    document.getElementById('hc-'+hname).classList.add('tq-hall');
+    // ensure hall is selected
+    const cb=document.getElementById('ch-'+hname);
+    if(cb&&!cb.checked){cb.checked=true;document.getElementById('hc-'+hname).classList.add('sel');
+      document.getElementById('s-halls').textContent=getSelectedHalls().length;}
+  }
+  const tqCount=TAKMILI_HALLS.size;
+  const badge=document.getElementById('tq-count-badge');
+  if(badge) badge.textContent=tqCount>0?`تقويمي: ${tqCount} قاعة`:'';
 }
 function selAllHalls(v){
   HALLS.forEach(h=>{
@@ -876,8 +911,14 @@ function runDistribution(){
   const day=document.getElementById('sel-day').value;
   const ec=document.getElementById('chk-excl-comm').checked;
   const er=document.getElementById('chk-excl-res').checked;
-  const sel=getSelectedHalls();
+  let sel=getSelectedHalls();
   if(!sel.length){ showAlert('results-area','⚠ الرجاء اختيار قاعة واحدة على الأقل','awk');return; }
+  // تقويمي halls get highest priority (distributed first)
+  sel=[...sel].sort((a,b)=>{
+    const aTq=TAKMILI_HALLS.has(a)?0:1;
+    const bTq=TAKMILI_HALLS.has(b)?0:1;
+    return aTq-bTq;
+  });
   lastDist=distribute(day,sel,ec,er);
   const allRem=getAllRemaining(day,lastDist,ec);
   const target=parseInt(document.getElementById('reserve-count').value)||30;
@@ -888,6 +929,14 @@ function runDistribution(){
     if(d.supervisor)assigned++;
     assigned+=d.monitors.filter(m=>m).length;
   }
+  // count gender constraint violations
+  let genderViolations=0;
+  for(const[hname,d] of Object.entries(lastDist)){
+    const all=[d.supervisor,...d.monitors].filter(Boolean);
+    const hasMale=all.some(p=>p.gender==='male');
+    const hasFemale=all.some(p=>p.gender==='female');
+    if(!hasMale||!hasFemale) genderViolations++;
+  }
   document.getElementById('s-assigned').textContent=assigned;
   document.getElementById('s-reserve').textContent=lastReserve.length;
   document.getElementById('s-remain').textContent=lastRemaining.length;
@@ -896,8 +945,8 @@ function runDistribution(){
   document.getElementById('btn-export-pdf').style.display='';
   document.getElementById('btn-save').style.display='';
   document.getElementById('save-msg').innerHTML='';
-  renderResults(lastDist,lastReserve,lastRemaining,day);
-  logActivity('تشغيل التوزيع',`اليوم: ${day} | القاعات: ${sel.length} | الموزَّعون: ${assigned} | الاحتياط: ${lastReserve.length}`);
+  renderResults(lastDist,lastReserve,lastRemaining,day,genderViolations);
+  logActivity('تشغيل التوزيع',`اليوم: ${day} | القاعات: ${sel.length} | الموزَّعون: ${assigned} | الاحتياط: ${lastReserve.length} | انتهاكات الجنس: ${genderViolations}`);
 }
 function showAlert(id,msg,cls){
   document.getElementById(id).innerHTML=`<div class="alert ${cls}">${msg}</div>`;
@@ -916,16 +965,19 @@ function saveCurrentRecord(){
     if(d.supervisor)assigned++;
     assigned+=d.monitors.filter(m=>m).length;
   }
+  const activeTqHalls=[...TAKMILI_HALLS].filter(h=>lastDist[h]);
   const rec={
     id:Date.now(), day, date, session,
     createdAt:new Date().toISOString(),
+    takmiliHalls:activeTqHalls,
     halls:Object.entries(lastDist).map(([hname,d])=>({
       hall:hname, needed:d.hall.monitors_needed,
       supervisor:d.supervisor?d.supervisor.name:null,
       monitors:d.monitors.map(m=>m?m.name:null)
     })),
     reserve:lastReserve.map(s=>s.name),
-    stats:{halls:Object.keys(lastDist).length, assigned, reserve:lastReserve.length}
+    stats:{halls:Object.keys(lastDist).length, assigned, reserve:lastReserve.length,
+           takmili:activeTqHalls.length}
   };
   RECORDS.unshift(rec);
   applyRecordToHistory(rec);
@@ -981,9 +1033,11 @@ function histBadge(name){
   const h=getHist(name);
   if(h.count===0) return `<span class="hbadge zero" title="لا توجد مراقبات سابقة">0 مرة</span>`;
   const last=h.sessions[h.sessions.length-1];
-  const tip=h.sessions.map(s=>`${s.day} ${s.date} | ${s.hall} (${s.role})`).join('\n');
+  const tip=h.sessions.map(s=>`${s.day} ${s.date} | ${s.hall} (${s.role})${s.isTakmili?' [تقويمي]':''}`).join('\n');
+  const tqCount=h.takmiliCount||0;
+  const tqBadge=tqCount>0?` <span style="background:#dc2626;color:#fff;border-radius:20px;padding:1px 5px;font-size:9px;font-weight:800">ت×${tqCount}</span>`:'';
   return `<span class="hbadge" title="${tip}" onclick="openHistPopup('${escHtml(name)}',event)">
-    ${h.count} مرة${h.count>0?' — آخرها: '+last.day+' '+last.date:''}
+    ${h.count} مرة${h.count>0?' — آخرها: '+last.day+' '+last.date:''}${tqBadge}
   </span>`;
 }
 function escHtml(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
@@ -999,12 +1053,18 @@ function personLine(p){
     ${histBadge(p.name)}`;
 }
 
-function renderResults(dist,reserve,remaining,day){
-  let html=`<div class="alert aok">✔ اكتمل التوزيع ليوم <strong>${day}</strong> — ${Object.keys(dist).length} قاعة &nbsp;|&nbsp; احتياط: ${reserve.length}</div>`;
+function renderResults(dist,reserve,remaining,day,genderViolations){
+  const tqCount=[...TAKMILI_HALLS].filter(h=>dist[h]).length;
+  let html=`<div class="alert aok">✔ اكتمل التوزيع ليوم <strong>${day}</strong> — ${Object.keys(dist).length} قاعة &nbsp;|&nbsp; احتياط: ${reserve.length}${tqCount>0?` &nbsp;|&nbsp; <span style="color:#dc2626;font-weight:800">🔴 تقويمي: ${tqCount} قاعة</span>`:''}</div>`;
+  if(genderViolations>0){
+    html+=`<div class="alert aer">⚠ <strong>${genderViolations} قاعة</strong> لم يتحقق فيها شرط وجود الجنسين (ذكر وأنثى) — قد يكون سبب ذلك نقص في الكادر المتاح</div>`;
+  }
   for(const[hname,d]of Object.entries(dist)){
-    html+=`<div class="hall-block" data-hname="${escHtml(hname)}">
+    const isTq=TAKMILI_HALLS.has(hname);
+    const tqLabel=isTq?`<span class="tq-label">تقويمي</span>`:'';
+    html+=`<div class="hall-block${isTq?' tq':''}" data-hname="${escHtml(hname)}">
       <div class="hall-hdr">
-        <span class="hall-title">🏛 ${hname}</span>
+        <span class="hall-title">🏛 ${tqLabel}${hname}</span>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="hall-meta">مطلوب: ${d.hall.monitors_needed}</span>
           <button class="btn" style="font-size:11px;padding:3px 9px;background:#fef9c3;border-color:#fcd34d;color:#713f12"
@@ -1073,14 +1133,18 @@ function openHistPopup(name,event){
   let body='';
   if(!h.count){ body='<p style="color:#94a3b8;font-size:12px">لا توجد مراقبات سابقة مسجّلة</p>'; }
   else {
-    body=`<p style="font-size:12px;color:#555;margin-bottom:8px">إجمالي المراقبات: <strong>${h.count}</strong></p>
+    const tqCount=h.takmiliCount||0;
+    const tqInfo=tqCount>0?` &nbsp;|&nbsp; <span style="color:#dc2626;font-weight:800">تقويمي: ${tqCount}</span>`:'';
+    body=`<p style="font-size:12px;color:#555;margin-bottom:8px">إجمالي المراقبات: <strong>${h.count}</strong>${tqInfo}</p>
     <table>
       <thead><tr><th>#</th><th>اليوم</th><th>التاريخ</th><th>الدورة</th><th>القاعة</th><th>الدور</th></tr></thead>
       <tbody>`;
     [...h.sessions].reverse().forEach((s,i)=>{
-      body+=`<tr>
+      const tqRow=s.isTakmili?'class="tq-his"':'';
+      const tqMark=s.isTakmili?` <span style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px">تقويمي</span>`:'';
+      body+=`<tr ${tqRow}>
         <td>${i+1}</td><td>${s.day}</td><td>${s.date}</td>
-        <td>${s.session||'—'}</td><td>${s.hall}</td><td>${s.role}</td>
+        <td>${s.session||'—'}</td><td>${s.hall}${tqMark}</td><td>${s.role}</td>
       </tr>`;
     });
     body+=`</tbody></table>`;
@@ -1115,6 +1179,8 @@ function renderRecordsTab(){
   el.innerHTML=RECORDS.map(rec=>{
     const sessionBadge=rec.session?`<span class="rec-session">${rec.session}</span>`:'';
     const dt=rec.date?rec.date.replace(/-/g,'/'):'—';
+    const tqCount=(rec.takmiliHalls||[]).length;
+    const tqBadge=tqCount>0?`<span class="rec-stat" style="background:#fee2e2;border-color:#fca5a5;color:#b91c1c;font-weight:800">🔴 تقويمي: ${tqCount}</span>`:'';
     return `<div class="rec-card">
       <div class="rec-hdr">
         <span class="rec-day">${rec.day}</span>
@@ -1124,6 +1190,7 @@ function renderRecordsTab(){
           <span class="rec-stat">🏛 ${rec.stats.halls} قاعة</span>
           <span class="rec-stat">👥 ${rec.stats.assigned} موزَّع</span>
           <span class="rec-stat" style="background:#fff7ed;border-color:#fed7aa;color:#92400e">⚡ ${rec.stats.reserve} احتياط</span>
+          ${tqBadge}
         </div>
         <div class="rec-actions">
           <button class="btn" style="font-size:11px;padding:3px 9px" onclick="toggleRecBody(${rec.id})">عرض</button>
@@ -1145,6 +1212,7 @@ function toggleRecBody(id){
 }
 
 function buildRecordDetail(rec){
+  const tqSet=new Set(rec.takmiliHalls||[]);
   let html=`<div style="overflow-x:auto"><table>
     <thead><tr>
       <th>القاعة</th><th>الدور</th><th>الاسم</th>
@@ -1153,8 +1221,11 @@ function buildRecordDetail(rec){
   for(const h of rec.halls){
     const tot=1+h.monitors.length;
     const supH=getHist(h.supervisor||'');
+    const isTq=tqSet.has(h.hall);
+    const hallCellStyle=isTq?'font-weight:700;color:#b91c1c;text-align:center;background:#fee2e2':'font-weight:700;color:#0d1b6e;text-align:center;background:#f0f2ff';
+    const tqMark=isTq?` <span style="background:#dc2626;color:#fff;border-radius:10px;padding:0 5px;font-size:9px">تقويمي</span>`:'';
     html+=`<tr>
-      <td rowspan="${tot}" style="font-weight:700;color:#0d1b6e;text-align:center;background:#f0f2ff">${h.hall}</td>
+      <td rowspan="${tot}" style="${hallCellStyle}">${h.hall}${tqMark}</td>
       <td>مشرف</td>
       <td>${h.supervisor||'—'}</td>
       <td>${h.supervisor?supH.count+' مرة':'—'}</td>
@@ -1346,6 +1417,8 @@ function renderStaffTable(){
     const lastSes=h.sessions.length?h.sessions[h.sessions.length-1]:null;
     const lastStr=lastSes?`${lastSes.day} ${lastSes.date}`:'—';
     const countStyle=h.count>5?'font-weight:800;color:#dc2626':h.count>0?'font-weight:700;color:#92400e':'color:#94a3b8';
+    const tqCount=h.takmiliCount||0;
+    const tqCell=tqCount>0?` <span style="background:#dc2626;color:#fff;border-radius:10px;padding:0 5px;font-size:9px;font-weight:800">ت×${tqCount}</span>`:'';
     return `<tr>
       <td>${i+1}</td>
       <td>
@@ -1357,7 +1430,7 @@ function renderStaffTable(){
       <td>${g}</td>
       <td style="font-size:11px">${s.days.join('، ')}</td>
       <td>${s.in_committee?'✔':''} ${comm}</td>
-      <td style="${countStyle};text-align:center">${h.count}</td>
+      <td style="${countStyle};text-align:center">${h.count}${tqCell}</td>
       <td style="font-size:11px;color:#555">${lastStr}</td>
       <td>${s.phone||'—'}</td>
     </tr>`;
