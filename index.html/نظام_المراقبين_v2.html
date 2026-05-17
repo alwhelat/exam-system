@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>نظام توزيع مراقبي الامتحانات v2</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#eef0f7;color:#1a1a2e;direction:rtl;font-size:14px}
+.hdr{background:linear-gradient(135deg,#0d1b6e,#1e40af);color:#fff;padding:14px 22px;display:flex;align-items:center;justify-content:space-between}
+.hdr h1{font-size:18px;font-weight:700}
+.hdr p{font-size:11px;opacity:.75;margin-top:2px}
+.tabs{display:flex;background:#fff;border-bottom:2px solid #dde1f0;padding:0 18px;gap:1px;overflow-x:auto}
+.tab{padding:10px 15px;font-size:12px;cursor:pointer;border-bottom:3px solid transparent;color:#666;transition:all .15s;font-weight:600;white-space:nowrap;flex-shrink:0}
+.tab.on{color:#0d1b6e;border-bottom-color:#0d1b6e}
+.tab:hover:not(.on){color:#1e40af;border-bottom-color:#a5b4fc}
+.wrap{padding:16px;max-width:1400px;margin:0 auto}
+.panel{display:none}.panel.on{display:block}
+.card{background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.ct{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #eee}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+label{font-size:12px;color:#444;display:block;margin-bottom:3px;font-weight:600}
+select,input[type=text],input[type=number]{width:100%;padding:7px 10px;font-size:13px;border:1px solid #c8cfe8;border-radius:6px;background:#fff;color:#222;font-family:inherit}
+select:focus,input:focus{outline:none;border-color:#1e40af;box-shadow:0 0 0 2px rgba(30,64,175,.12)}
+.btn{padding:7px 14px;font-size:12px;border-radius:7px;border:1px solid #c8cfe8;background:#fff;color:#333;cursor:pointer;font-family:inherit;font-weight:700;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.btn:hover{background:#f0f2ff}
+.bp{background:#0d1b6e;color:#fff;border-color:#0d1b6e}.bp:hover{background:#1e40af}
+.bg{background:#14532d;color:#fff;border-color:#14532d}.bg:hover{background:#166534}
+.br{background:#7f1d1d;color:#fff;border-color:#7f1d1d}.br:hover{background:#991b1b}
+.bo{background:#92400e;color:#fff;border-color:#92400e}.bo:hover{background:#b45309}
+.bsm{padding:4px 9px;font-size:11px}
+.bx{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;white-space:nowrap}
+.bm{background:#dcfce7;color:#14532d}.bh{background:#fef9c3;color:#713f12}
+.bp2{background:#ede9fe;color:#3b0764}.ba{background:#dbeafe;color:#1e3a8a}
+.bd{background:#e0f2fe;color:#0c4a6e}.bm2{background:#f3e8ff;color:#581c87}
+.bml{background:#dbeafe;color:#1e3a8a}.bfl{background:#fce7f3;color:#831843}
+.bco{background:#fee2e2;color:#7f1d1d}.brs{background:#dcfce7;color:#14532d}
+.brn{background:#dbeafe;color:#1e3a8a}.bor{background:#ffedd5;color:#7c2d12}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:12px}
+.sb{background:#fff;border-radius:8px;padding:10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.sn{font-size:22px;font-weight:800;color:#0d1b6e}.sl{font-size:10px;color:#888;margin-top:2px}
+.fbar{display:flex;gap:7px;margin-bottom:11px;flex-wrap:wrap;align-items:center}
+.fbar select{width:auto;min-width:140px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#eef0ff;padding:7px 8px;text-align:right;font-weight:700;border:1px solid #dde1f0}
+td{padding:5px 8px;border:1px solid #eee;vertical-align:middle}
+tr:nth-child(even) td{background:#f8f9ff}
+tr:hover td{background:#eef2ff}
+.hgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+.hchk{display:flex;align-items:center;gap:5px;padding:5px 8px;border:1px solid #dde;border-radius:7px;cursor:pointer;font-size:12px;transition:background .12s}
+.hchk.sel{background:#e0e7ff;border-color:#1e40af}
+.hchk input{width:auto;cursor:pointer;accent-color:#0d1b6e}
+.hb{font-weight:700}.hc{color:#888;font-size:10px}
+.hall-block{background:#fff;border:1px solid #dde1f0;border-radius:10px;margin-bottom:9px;overflow:hidden}
+.hall-hdr{background:#f0f2ff;padding:9px 13px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #dde1f0}
+.hall-title{font-weight:700;font-size:14px;color:#0d1b6e}
+.hall-meta{font-size:11px;color:#888}
+.hall-body{padding:7px 13px}
+.arow{display:grid;grid-template-columns:120px 1fr auto auto;gap:7px;align-items:center;padding:4px 0;border-bottom:1px dashed #eef}
+.arow:last-child{border-bottom:none}
+.rtag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.rs{background:#dcfce7;color:#14532d}.rm{background:#dbeafe;color:#1e3a8a}
+.msel{font-size:12px;padding:4px 7px;border:1px solid #ddd;border-radius:5px;background:#fff;color:#222;font-family:inherit;width:100%}
+.alert{padding:9px 13px;border-radius:7px;font-size:12px;margin-bottom:10px;display:flex;align-items:center;gap:7px;border-width:1px;border-style:solid}
+.aok{background:#f0fdf4;color:#166534;border-color:#86efac}
+.awk{background:#fffbeb;color:#92400e;border-color:#fcd34d}
+.aer{background:#fff1f2;color:#9f1239;border-color:#fca5a5}
+.ain{background:#eff6ff;color:#1e40af;border-color:#93c5fd}
+.legend{background:#f8f9ff;border:1px solid #dde1f0;border-radius:9px;padding:10px 14px;margin-bottom:11px;font-size:12px;line-height:2.2}
+pre{font-family:'Courier New',monospace;font-size:11px;white-space:pre-wrap;background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:11px;max-height:420px;overflow-y:auto;direction:ltr;text-align:left;line-height:1.6}
+.gwarn{font-size:11px;color:#b91c1c;font-weight:700}
+.prow{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:12px;padding:20px 24px;min-width:420px;max-width:600px;box-shadow:0 8px 32px rgba(0,0,0,.22);max-height:90vh;overflow-y:auto}
+.modal h2{font-size:16px;font-weight:700;color:#0d1b6e;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #eee}
+.modal-close{float:left;cursor:pointer;font-size:20px;color:#999;line-height:1}
+.modal-close:hover{color:#333}
+.day-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.dpill{padding:4px 10px;border-radius:20px;border:1px solid #c8cfe8;cursor:pointer;font-size:12px;font-weight:600;background:#fff;color:#555}
+.dpill.on{background:#0d1b6e;color:#fff;border-color:#0d1b6e}
+.rem-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.rem-table th{background:#f0f2ff;padding:7px 8px;font-weight:700;border:1px solid #dde1f0}
+.rem-table td{padding:6px 8px;border:1px solid #eee}
+.rem-table tr:nth-child(even) td{background:#f8f9ff}
+.res-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.res-table th{background:#fff7ed;padding:7px 8px;font-weight:700;border:1px solid #fed7aa;color:#92400e}
+.res-table td{padding:6px 8px;border:1px solid #eee}
+.res-table tr:nth-child(even) td{background:#fffbf5}
+.section-badge{background:#0d1b6e;color:#fff;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;margin-right:6px}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <h1>🎓 نظام توزيع مراقبي الامتحانات النهائية</h1>
+    <p>العام الدراسي 2025-2026 &nbsp;|&nbsp; <span id="tot-staff">271</span> تدريسي &nbsp;|&nbsp; <span id="tot-halls">75</span> قاعة</p>
+  </div>
+  <div class="prow">
+    <button class="btn bsm bo" onclick="openModal('m-addstaff')">➕ إضافة تدريسي</button>
+    <button class="btn bsm bg" onclick="openModal('m-addhall')">🏫 إضافة قاعة</button>
+    <button class="btn bsm bp" onclick="openModal('m-reserve')">📋 الاحتياط</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab on"  onclick="T('staff',this)">📋 قاعدة البيانات</div>
+  <div class="tab"     onclick="T('cfg',this)">⚙️ إعداد اليوم</div>
+  <div class="tab"     onclick="T('dist',this)">⚡ التوزيع</div>
+  <div class="tab"     onclick="T('remain',this)">👥 المتبقون</div>
+  <div class="tab"     onclick="T('exp',this)">📄 تصدير</div>
+</div>
+
+<div class="wrap">
+
+<!-- ══ PANEL: STAFF ══ -->
+<div id="p-staff" class="panel on">
+  <div class="legend">
+    <strong>القواعد:</strong>&nbsp;
+    <span class="bx bm">ملاك</span> أولوية على <span class="bx bh">محاضر</span>&nbsp;|&nbsp;
+    <strong>مشرف:</strong> <span class="bx bp2">أ.د</span> <span class="bx ba">أ.م.د</span> <span class="bx bd">م.د</span>&nbsp;|&nbsp;
+    <strong>مراقبون:</strong> <span class="bx bm2">م.م</span> أو م. (ماجستير)&nbsp;|&nbsp;
+    كل قاعة: <span class="bx bml">ذكر</span> + <span class="bx bfl">أنثى</span>
+  </div>
+  <div class="card">
+    <div class="fbar">
+      <input type="text" id="sq" placeholder="🔍 بحث بالاسم..." style="min-width:180px" oninput="RS()">
+      <select id="fc" onchange="RS()"><option value="">كل الكليات</option></select>
+      <select id="ft" onchange="RS()"><option value="">كل الأنواع</option><option value="ملاك">ملاك</option><option value="محاضر">محاضر</option></select>
+      <select id="fr" onchange="RS()"><option value="">كل الأدوار</option><option value="sup">مؤهل للإشراف</option><option value="mon">مؤهل للمراقبة</option></select>
+      <select id="fg" onchange="RS()"><option value="">كلا الجنسين</option><option value="male">ذكر</option><option value="female">أنثى</option></select>
+      <select id="fres" onchange="RS()"><option value="">الكل</option><option value="yes">احتياط فقط</option><option value="no">غير احتياط</option></select>
+      <span id="scnt" style="font-size:11px;color:#888;margin-right:auto"></span>
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th>#</th><th>الاسم</th><th>الكلية</th><th>القسم</th>
+        <th>النوع</th><th>المنصب</th><th>اللقب</th><th>الجنس</th>
+        <th>أيام الدوام</th><th>لجنة؟</th><th>احتياط؟</th><th></th>
+      </tr></thead>
+      <tbody id="stb"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PANEL: CONFIG ══ -->
+<div id="p-cfg" class="panel">
+  <div class="card">
+    <div class="ct">إعداد يوم الامتحان</div>
+    <div class="g3">
+      <div><label>يوم الامتحان</label>
+        <select id="eday" onchange="AC()">
+          <option>السبت</option><option>الاحد</option><option>الاثنين</option>
+          <option>الثلاثاء</option><option>الاربعاء</option><option>الخميس</option>
+        </select>
+      </div>
+      <div><label>التاريخ</label><input type="text" id="edate" placeholder="2025/06/15"></div>
+      <div><label>الدورة الامتحانية</label><input type="text" id="esesn" placeholder="الدورة الأولى 2025"></div>
+    </div>
+    <div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap">
+      <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="excm" checked> استبعاد أعضاء اللجان الامتحانية
+      </label>
+      <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="exres"> استبعاد قائمة الاحتياط من التوزيع الرئيسي
+      </label>
+    </div>
+  </div>
+  <div class="stats" id="avst">
+    <div class="sb"><div class="sn" id="av0">0</div><div class="sl">متاح اليوم</div></div>
+    <div class="sb"><div class="sn" id="av1">0</div><div class="sl">مشرفون مؤهلون</div></div>
+    <div class="sb"><div class="sn" id="av2">0</div><div class="sl">مراقبون مؤهلون</div></div>
+    <div class="sb"><div class="sn" id="av3">0</div><div class="sl">ذكور</div></div>
+    <div class="sb"><div class="sn" id="av4">0</div><div class="sl">إناث</div></div>
+  </div>
+  <div class="card">
+    <div class="ct">القاعات المشمولة (<span id="hsel">0</span>)</div>
+    <div class="fbar" style="margin-bottom:9px">
+      <button class="btn bsm bp" onclick="SA()">تحديد الكل</button>
+      <button class="btn bsm" onclick="DA()">إلغاء الكل</button>
+      <span style="font-size:12px;color:#888;margin-right:auto">مراقبون مطلوبون: <strong id="tmon">0</strong></span>
+    </div>
+    <div class="hgrid" id="hgrid"></div>
+  </div>
+</div>
+
+<!-- ══ PANEL: DIST ══ -->
+<div id="p-dist" class="panel">
+  <div id="dal" style="display:none" class="alert"></div>
+  <div class="stats">
+    <div class="sb"><div class="sn" id="d0">0</div><div class="sl">قاعة</div></div>
+    <div class="sb"><div class="sn" id="d1">0</div><div class="sl">موزَّع</div></div>
+    <div class="sb"><div class="sn" id="d2">0</div><div class="sl">متاح اليوم</div></div>
+    <div class="sb"><div class="sn" id="d3" style="color:#b91c1c">0</div><div class="sl">عجز</div></div>
+    <div class="sb"><div class="sn" id="d4" style="color:#166534">0</div><div class="sl">قاعة بجنسين ✓</div></div>
+  </div>
+  <div class="fbar" style="margin-bottom:12px">
+    <button class="btn bp" onclick="RD()">⚡ توزيع تلقائي</button>
+    <button class="btn br" onclick="CD()">🗑 مسح التوزيع</button>
+    <button class="btn bg" onclick="T('exp',document.querySelectorAll('.tab')[4])">📄 تصدير</button>
+    <button class="btn bsm bo" onclick="T('remain',document.querySelectorAll('.tab')[3])">👥 المتبقون</button>
+    <span style="font-size:11px;color:#888;margin-right:auto;align-self:center">التعديل اليدوي متاح من القوائم المنسدلة</span>
+  </div>
+  <div id="dres"></div>
+</div>
+
+<!-- ══ PANEL: REMAINING ══ -->
+<div id="p-remain" class="panel">
+  <div class="card">
+    <div class="ct">المراقبون غير الموزَّعين اليوم</div>
+    <div class="fbar">
+      <button class="btn bp bsm" onclick="calcRemain()">🔄 تحديث القائمة</button>
+      <select id="rf" onchange="calcRemain()" style="width:auto;min-width:140px">
+        <option value="">كل الأنواع</option>
+        <option value="sup">مؤهل للإشراف</option>
+        <option value="mon">مؤهل للمراقبة</option>
+        <option value="male">ذكور فقط</option>
+        <option value="female">إناث فقط</option>
+      </select>
+      <span id="remcnt" style="font-size:12px;color:#888;margin-right:auto"></span>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="rem-table">
+      <thead><tr>
+        <th>#</th><th>الاسم</th><th>الكلية</th><th>النوع</th><th>اللقب</th><th>الجنس</th><th>المنصب</th><th>الهاتف</th>
+      </tr></thead>
+      <tbody id="remtb"></tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">قائمة الاحتياط المعيَّنة</div>
+    <div style="overflow-x:auto">
+    <table class="res-table">
+      <thead><tr>
+        <th>#</th><th>الاسم</th><th>الكلية</th><th>النوع</th><th>اللقب</th><th>الجنس</th><th>الهاتف</th>
+      </tr></thead>
+      <tbody id="restb"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PANEL: EXPORT ══ -->
+<div id="p-exp" class="panel">
+  <div class="card">
+    <div class="ct">تصدير جدول التوزيع</div>
+    <div class="fbar" style="margin-bottom:11px">
+      <button class="btn bp" onclick="GE()">🔄 توليد المعاينة</button>
+      <button class="btn bg" onclick="DL()">⬇ تنزيل (.txt)</button>
+      <button class="btn" onclick="CP()">📋 نسخ</button>
+    </div>
+    <pre id="epre">اضغط "توليد المعاينة"...</pre>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<!-- ══ MODALS ══ -->
+
+<!-- Add Staff Modal -->
+<div id="m-addstaff" class="modal-bg">
+<div class="modal">
+  <div class="modal-close" onclick="closeModal('m-addstaff')">✕</div>
+  <h2>➕ إضافة تدريسي يدوياً</h2>
+  <div class="g2">
+    <div><label>الاسم الكامل (مع اللقب)</label><input type="text" id="an" placeholder="م.م أحمد علي محمد"></div>
+    <div><label>الكلية</label><input type="text" id="acol" placeholder="الهندسة"></div>
+  </div>
+  <div class="g2">
+    <div><label>القسم</label><input type="text" id="adpt" placeholder="هندسة الحاسوب"></div>
+    <div><label>رقم الهاتف</label><input type="text" id="aph" placeholder="07XXXXXXXXX"></div>
+  </div>
+  <div class="g2">
+    <div><label>نوع الدوام</label>
+      <select id="amt"><option value="ملاك">ملاك</option><option value="محاضر">محاضر</option></select>
+    </div>
+    <div><label>المنصب</label>
+      <select id="apos">
+        <option value="تدريسي">تدريسي</option>
+        <option value="مقرر قسم">مقرر قسم</option>
+        <option value="رئيس قسم">رئيس قسم</option>
+        <option value="عميد">عميد</option>
+        <option value="معاون عميد">معاون عميد</option>
+      </select>
+    </div>
+  </div>
+  <div style="margin-bottom:10px">
+    <label>أيام الدوام</label>
+    <div class="day-pills">
+      <span class="dpill on" data-d="السبت" onclick="toggleDay(this)">السبت</span>
+      <span class="dpill on" data-d="الاحد" onclick="toggleDay(this)">الاحد</span>
+      <span class="dpill on" data-d="الاثنين" onclick="toggleDay(this)">الاثنين</span>
+      <span class="dpill on" data-d="الثلاثاء" onclick="toggleDay(this)">الثلاثاء</span>
+      <span class="dpill on" data-d="الاربعاء" onclick="toggleDay(this)">الاربعاء</span>
+      <span class="dpill on" data-d="الخميس" onclick="toggleDay(this)">الخميس</span>
+    </div>
+  </div>
+  <div class="g2" style="margin-bottom:10px">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="acomm"> عضو لجنة امتحانية</label>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ares"> ضمن قائمة الاحتياط</label>
+  </div>
+  <div id="add-err" class="alert aer" style="display:none"></div>
+  <div style="display:flex;gap:8px">
+    <button class="btn bp" onclick="addStaff()">✓ إضافة</button>
+    <button class="btn" onclick="closeModal('m-addstaff')">إلغاء</button>
+  </div>
+</div>
+</div>
+
+<!-- Add Hall Modal -->
+<div id="m-addhall" class="modal-bg">
+<div class="modal">
+  <div class="modal-close" onclick="closeModal('m-addhall')">✕</div>
+  <h2>🏫 إضافة قاعة إضافية</h2>
+  <div class="g2">
+    <div><label>اسم القاعة</label><input type="text" id="hn" placeholder="قاعة X1"></div>
+    <div><label>عدد المراقبين المطلوبين</label><input type="number" id="hm" min="1" max="10" value="2"></div>
+  </div>
+  <div id="hall-err" class="alert aer" style="display:none"></div>
+  <div style="display:flex;gap:8px">
+    <button class="btn bp" onclick="addHall()">✓ إضافة</button>
+    <button class="btn" onclick="closeModal('m-addhall')">إلغاء</button>
+  </div>
+</div>
+</div>
+
+<!-- Reserve List Modal -->
+<div id="m-reserve" class="modal-bg">
+<div class="modal" style="min-width:520px">
+  <div class="modal-close" onclick="closeModal('m-reserve')">✕</div>
+  <h2>📋 قائمة الاحتياط</h2>
+  <p style="font-size:12px;color:#666;margin-bottom:12px">التدريسيون المحددون كاحتياط متاحون للتعيين اليدوي في حالات الطوارئ ويظهرون في قائمة المتبقين.</p>
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr>
+      <th style="background:#fff7ed;padding:6px 8px;border:1px solid #fed7aa;color:#92400e">الاسم</th>
+      <th style="background:#fff7ed;padding:6px 8px;border:1px solid #fed7aa;color:#92400e">النوع</th>
+      <th style="background:#fff7ed;padding:6px 8px;border:1px solid #fed7aa;color:#92400e">اللقب</th>
+      <th style="background:#fff7ed;padding:6px 8px;border:1px solid #fed7aa;color:#92400e">الإجراء</th>
+    </tr></thead>
+    <tbody id="restbl"></tbody>
+  </table>
+  <p style="font-size:11px;color:#888;margin-top:10px">لإضافة تدريسي للاحتياط: أضفه من قاعدة البيانات أو أثناء إضافة تدريسي جديد.</p>
+</div>
+</div>
+
+<script>
+// ═══════════════ DATA ═══════════════
+const BASE_STAFF=[{"id":0,"name":"م.م سيناء غني قدوري","college":"الهندسة","dept":"هندسة الذكاء الاصطناعي","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7710210195","total_rank":14},{"id":1,"name":"م.م هند سعد","college":"الهندسة","dept":"هندسة الذكاء الاصطناعي","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7800637719","total_rank":15},{"id":2,"name":"د.أسامه محسن عبدالعزيز","college":"الهندسة","dept":"هندسة الذكاء الاصطناعي","title_code":"dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاربعاء"],"in_committee":false,"gender":"male","phone":"7726100725","total_rank":7},{"id":3,"name":"م.د شامل ابراهيم محمد","college":"الهندسة","dept":"هندسة النفط","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7808626200","total_rank":15},{"id":4,"name":"م.م ياسر بشير محمد","college":"الهندسة","dept":"هندسة النفط","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7700321007","total_rank":14},{"id":5,"name":"ا.د علي محسن صالح","college":"الهندسة","dept":"هندسة النفط","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7828898932","total_rank":19},{"id":6,"name":"ا.د زهير داود احمد","college":"الهندسة","dept":"هندسة النفط","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7901492659","total_rank":19},{"id":7,"name":"م.د احمد سعد حسين","college":"الهندسة","dept":"هندسة الطب الحياتي","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":15},{"id":8,"name":"ا.د مزاحم عزيز باصي","college":"الهندسة","dept":"هندسة النفط","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7730477803","total_rank":19},{"id":9,"name":"م.د احمد جبير محمود","college":"الهندسة","dept":"هندسة النفط","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاربعاء","الثلاثاء"],"in_committee":false,"gender":"male","phone":"7906155726","total_rank":17},{"id":10,"name":"م.د ليلى صديق محمد","college":"الهندسة","dept":"هندسة النفط","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7713492995","total_rank":17},{"id":11,"name":"م.د حسين علي مصلح","college":"الهندسة","dept":"هندسة النفط","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7775825927","total_rank":17},{"id":12,"name":"م.م هبة علي حسن","college":"الهندسة","dept":"هندسة النفط","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7815929038","total_rank":15},{"id":13,"name":"م.م عبدالعزيز باسم عبدالحسين","college":"الهندسة","dept":"هندسة النفط","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7732114156","total_rank":15},{"id":14,"name":"م.م ايالف يحيى فاضل","college":"الهندسة","dept":"هندسة النفط","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7718957077","total_rank":15},{"id":15,"name":"م.م حسن كريم سليم","college":"الهندسة","dept":"هندسة النفط","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7807779252","total_rank":15},{"id":16,"name":"م.م مصطفى كامل احمد","college":"الهندسة","dept":"هندسة النفط","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7703719902","total_rank":15},{"id":17,"name":"م.م مريم باسم موسى","college":"الهندسة","dept":"هندسة النفط","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7701829700","total_rank":15},{"id":18,"name":"د.رامي ماجد الحاج حسين","college":"الهندسة","dept":"هندسة النفط","title_code":"dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7779543432","total_rank":17},{"id":19,"name":"ا.م.د غانم مديح فرمان","college":"الهندسة","dept":"هندسة النفط","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين"],"in_committee":false,"gender":"male","phone":"7713230681","total_rank":8},{"id":20,"name":"ا.م.د امل حبيب عاصي","college":"الهندسة","dept":"هندسة النفط","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين"],"in_committee":false,"gender":"female","phone":"7700270439","total_rank":8},{"id":21,"name":"م.م. محمد سالم عبد الغفور","college":"الهندسة","dept":"هندسة النفط","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد"],"in_committee":false,"gender":"male","phone":"7748016859","total_rank":5},{"id":22,"name":"أ.د. عمار علي فرحان","college":"الهندسة","dept":"هندسة النفط","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد"],"in_committee":false,"gender":"male","phone":"7712901111","total_rank":9},{"id":23,"name":"م.م. وليد حميد هاشم","college":"الهندسة","dept":"هندسة النفط","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد"],"in_committee":false,"gender":"male","phone":"7830797204","total_rank":5},{"id":24,"name":"م.د.فراس علي مجيد","college":"الهندسة","dept":"الهندسة المعمارية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":15},{"id":25,"name":"م.د.ميثم حسن مهدي","college":"الهندسة","dept":"الهندسة المعمارية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":16},{"id":26,"name":"م.د.وضاح عبد الصاحب","college":"الهندسة","dept":"الهندسة المعمارية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":17},{"id":27,"name":"م.د.فتحي فاضل عبد الامير","college":"الهندسة","dept":"الهندسة المعمارية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":17},{"id":28,"name":"م.م.بان عصمت عبد القادر","college":"الهندسة","dept":"الهندسة المعمارية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":29,"name":"م.م.هيفاء سالم عبد الكريم","college":"الهندسة","dept":"الهندسة المعمارية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":30,"name":"م.م.ريما حمزة ياسين","college":"الهندسة","dept":"الهندسة المعمارية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":31,"name":"م.م.شهد محمد عبد الله","college":"الهندسة","dept":"الهندسة المعمارية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":32,"name":"م.م.نغم خالد محمد حسن","college":"الهندسة","dept":"الهندسة المعمارية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":33,"name":"أ.م.د. اسامة عبد الامير عيدان","college":"الهندسة","dept":"الهندسة المدنية","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":34,"name":"أ.د. وليد مصطفى خماس","college":"الهندسة","dept":"الهندسة المدنية","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":17},{"id":35,"name":"م.م. رحمه غسان ابراهيم","college":"الهندسة","dept":"الهندسة المدنية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"nan","total_rank":14},{"id":36,"name":"أ.د. علاء حسين مهدي","college":"الهندسة","dept":"الهندسة المدنية","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"مقرر كلية","pos_rank":0,"days":[],"in_committee":false,"gender":"male","phone":"nan","total_rank":16},{"id":37,"name":"أ.د. كاظم رحيم رزيج","college":"الهندسة","dept":"الهندسة المدنية","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت"],"in_committee":false,"gender":"male","phone":"nan","total_rank":9},{"id":38,"name":"أ.م.د.كنعان متعب عبد الكريم","college":"الهندسة","dept":"الهندسة المدنية","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين"],"in_committee":false,"gender":"male","phone":"nan","total_rank":18},{"id":39,"name":"أ.م.د.مهند حاتم شذر","college":"الهندسة","dept":"الهندسة المدنية","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاربعاء"],"in_committee":false,"gender":"male","phone":"nan","total_rank":8},{"id":40,"name":"م.د.حسام مصلح عبد الله","college":"الهندسة","dept":"الهندسة المدنية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد"],"in_committee":false,"gender":"male","phone":"nan","total_rank":17},{"id":41,"name":"م.د.صباح الشجيري","college":"الهندسة","dept":"الهندسة المدنية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":17},{"id":42,"name":"م.د. حيدر ميثم حكمت","college":"الهندسة","dept":"الهندسة المدنية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاربعاء"],"in_committee":false,"gender":"male","phone":"nan","total_rank":7},{"id":43,"name":"أ.م.حقي اسماعيل كاطع","college":"الهندسة","dept":"الهندسة المدنية","title_code":"asst","title_rank":3,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء"],"in_committee":false,"gender":"male","phone":"nan","total_rank":16},{"id":44,"name":"م.م. سرمد عبد القادر عبد الكريم","college":"الهندسة","dept":"الهندسة المدنية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين","الثلاثاء","الاربعاء"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":45,"name":"م.م. رغدة هاشم عبد","college":"الهندسة","dept":"الهندسة المدنية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاربعاء"],"in_committee":false,"gender":"female","phone":"nan","total_rank":5},{"id":46,"name":"م.م.حسين سعدون مطر","college":"الهندسة","dept":"الهندسة المدنية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الاثنين","الثلاثاء","الاربعاء"],"in_committee":false,"gender":"male","phone":"nan","total_rank":5},{"id":47,"name":"م.م.سارة يحيى","college":"الهندسة","dept":"الهندسة المدنية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء"],"in_committee":true,"gender":"male","phone":"nan","total_rank":15},{"id":48,"name":"م.م. مينا صالح","college":"الهندسة","dept":"الهندسة المدنية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"nan","total_rank":15},{"id":49,"name":"م.م.حسام احمد","college":"الهندسة","dept":"الهندسة المدنية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["الاحد","الاثنين","الثلاثاء","الاربعاء"],"in_committee":true,"gender":"male","phone":"nan","total_rank":15},{"id":50,"name":"م.م. بارق صالح","college":"الهندسة","dept":"الهندسة المدنية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":51,"name":"م.م.يوسف  حامد","college":"الهندسة","dept":"الهندسة المدنية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":52,"name":"م.م.عمر يحيى","college":"الهندسة","dept":"الهندسة المدنية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الثلاثاء","الاربعاء"],"in_committee":false,"gender":"male","phone":"nan","total_rank":5},{"id":53,"name":"م.د. فيصل مؤيد","college":"الهندسة","dept":"الهندسة المدنية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاربعاء","الاثنين"],"in_committee":false,"gender":"male","phone":"nan","total_rank":7},{"id":54,"name":"م.م المنتظر محمود عبدالواحد","college":"الهندسة","dept":"هندسة الحاسوب","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":13},{"id":55,"name":"م.م سارة خيرالله مهدي","college":"الهندسة","dept":"هندسة الحاسوب","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"nan","total_rank":14},{"id":56,"name":"م.م يسرى عبدالرزاق سرور","college":"الهندسة","dept":"هندسة الحاسوب","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":57,"name":"م.م هدى علي مهدي","college":"الهندسة","dept":"هندسة الحاسوب","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"nan","total_rank":15},{"id":58,"name":"م.م فرح رعد","college":"الهندسة","dept":"هندسة الحاسوب","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"nan","total_rank":15},{"id":59,"name":"م.د انمار يحيى طاهر","college":"الهندسة","dept":"هندسة الامن السيبراني","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":60,"name":"م.م فاطمة عبد القادر","college":"الهندسة","dept":"هندسة الامن السيبراني","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"nan","total_rank":14},{"id":61,"name":"م.د فلاح نوري سعيد","college":"الهندسة","dept":"هندسة الامن السيبراني","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":[],"in_committee":false,"gender":"male","phone":"nan","total_rank":7},{"id":62,"name":"م.د خالد عبد علي","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":63,"name":"م.م علي حسين علي","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":14},{"id":64,"name":"ا.م.د عبدالفتاح محمد علي","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":18},{"id":65,"name":"أ.د سعد احمد جعفر","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين"],"in_committee":false,"gender":"male","phone":"nan","total_rank":19},{"id":66,"name":"أ.د وليد محمد صالح","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":19},{"id":67,"name":"ا.م.د سليم محمد عبيد","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["الاحد","الاثنين","الثلاثاء"],"in_committee":false,"gender":"male","phone":"nan","total_rank":18},{"id":68,"name":"أ.م منى يوسف عبد الاحد","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"asst","title_rank":3,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["الاحد","الاثنين"],"in_committee":false,"gender":"female","phone":"nan","total_rank":16},{"id":69,"name":"م.د كفاء فاضل عباس","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"nan","total_rank":17},{"id":70,"name":"م.م لميس رعد جبار","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"nan","total_rank":15},{"id":71,"name":"م.م رونق عدنان كاظم","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["الاثنين","الثلاثاء","الاربعاء"],"in_committee":false,"gender":"female","phone":"nan","total_rank":15},{"id":72,"name":"م.م ضرغام قاسم يونس","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["الاثنين","الثلاثاء"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":73,"name":"م.م ضحى صباح خضير","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاربعاء"],"in_committee":false,"gender":"female","phone":"nan","total_rank":15},{"id":74,"name":"م.م هند فاضل حسن","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"nan","total_rank":15},{"id":75,"name":"م.م رغد محمد هادي","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"nan","total_rank":15},{"id":76,"name":"م. علي عامر","college":"الهندسة","dept":"هندسة تكرير النفط والغاز","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد"],"in_committee":false,"gender":"male","phone":"nan","total_rank":5},{"id":77,"name":"أ.د. عباس رمضان رمح عبد","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"0787 676 4004","total_rank":19},{"id":78,"name":"أ.د. محمد سعود صغير حمد","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7903240414","total_rank":19},{"id":79,"name":"م.د. ازهار حنون مسلط مطلك","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7901261968","total_rank":17},{"id":80,"name":"م.م. همسة عمر فاروق عبد الكريم","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7733361979","total_rank":15},{"id":81,"name":"م.م. سجى عبدلله محمد حسين","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7756763868","total_rank":15},{"id":82,"name":"م.م.ذكريات جواد كاظم طوفان","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7700860800","total_rank":15},{"id":83,"name":"م.م. تبارك حسن جلوب رجي","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7712120209","total_rank":15},{"id":84,"name":"م.م. علياء داود خضر","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7780313881","total_rank":15},{"id":85,"name":"م.م. احمد حميد حمادي","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7728660057","total_rank":15},{"id":86,"name":"م.م. ايثار نهاد حكمت","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7709759407","total_rank":15},{"id":87,"name":"م.د.يحيى هارون ضيغم","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الاثنين","الاربعاء","السبت"],"in_committee":false,"gender":"male","phone":"7832374434","total_rank":7},{"id":88,"name":"م.م.وداد عايد عبد الله حسين","college":"التربية","dept":"تربية اللغة الانكليزية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7723581979","total_rank":15},{"id":89,"name":"م.م. هدى سلمان خادم","college":"التربية","dept":"تربية الرياضيات","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين"],"in_committee":false,"gender":"female","phone":"7750909643","total_rank":5},{"id":90,"name":"م.م. فرح قيس سعدي","college":"التربية","dept":"تربية الرياضيات","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7715947690","total_rank":15},{"id":91,"name":"م.م.قاسم هادي هدام","college":"التربية","dept":"تربية الرياضيات","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الثلاثاء"],"in_committee":false,"gender":"male","phone":"7718806001","total_rank":5},{"id":92,"name":"أ.م.د. حسين محسن بدر","college":"التربية","dept":"تربية اللغة العربية","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7727087088","total_rank":18},{"id":93,"name":"م.م. فراس علي داود الملا","college":"التربية","dept":"تربية اللغة العربية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7717525511","total_rank":15},{"id":94,"name":"م.م. سارة علي رجب","college":"التربية","dept":"تربية اللغة العربية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7702921811","total_rank":14},{"id":95,"name":"م.م. غفران هادي حسين","college":"التربية","dept":"تربية اللغة العربية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7849851161","total_rank":15},{"id":96,"name":"م.م. زينب لطيف عبد الله","college":"التربية","dept":"تربية علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7731191332","total_rank":14},{"id":97,"name":"ا.م.د ياسمين فوزي عزيز","college":"التقنية الهندسية","dept":"هندسة القدرة الكهربائية","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7731536763","total_rank":16},{"id":98,"name":"م.م استبرق عبد الرحمن","college":"التقنية الهندسية","dept":"هندسة القدرة الكهربائية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7727816448","total_rank":14},{"id":99,"name":"م.م مريم جبار موسى","college":"التقنية الهندسية","dept":"هندسة تقنيات الاجهزة الطبية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7767177473","total_rank":14},{"id":100,"name":"م.م مروان قحطان عدنان","college":"التقنية الهندسية","dept":"هندسة تقنيات الاجهزة الطبية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7700229367","total_rank":15},{"id":101,"name":"م.د نور علاء احمد","college":"التقنية الهندسية","dept":"هندسة تقنيات الاجهزة الطبية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الاربعاء","السبت"],"in_committee":false,"gender":"female","phone":"7744162831","total_rank":7},{"id":102,"name":"ا.م.د اكرم حاتم شذر","college":"التقنية الهندسية","dept":"هندسة تقنيات الحاسوب","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["الاثنين","الاحد","السبت"],"in_committee":false,"gender":"male","phone":"7734340962","total_rank":16},{"id":103,"name":"م.م نور نصير مهدي","college":"التقنية الهندسية","dept":"هندسة تقنيات الحاسوب","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7814492805","total_rank":14},{"id":104,"name":"م.م ميلاد سعدي","college":"التقنية الهندسية","dept":"هندسة تقنيات الحاسوب","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7723586726","total_rank":15},{"id":105,"name":"م.م فرقان عبد المنعم","college":"التقنية الهندسية","dept":"هندسة تقنيات الحاسوب","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين"],"in_committee":false,"gender":"male","phone":"7713800093","total_rank":5},{"id":106,"name":"م.م ذو الفقار عبد الستار","college":"التقنية الهندسية","dept":"هندسة تقنيات الحاسوب","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الاثنين"],"in_committee":false,"gender":"male","phone":"7732433683","total_rank":5},{"id":107,"name":"م.د احمد سعد حسين","college":"التقنية الهندسية","dept":"هندسة تقنيات الامن السيبراني","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7832194077","total_rank":15},{"id":108,"name":"م.م نبأ علاء","college":"التقنية الهندسية","dept":"هندسة تقنيات الامن السيبراني","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"nan","total_rank":14},{"id":109,"name":"م.د علاء فائق","college":"التقنية الهندسية","dept":"هندسة تقنيات الامن السيبراني","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الاثنين","السبت"],"in_committee":false,"gender":"male","phone":"nan","total_rank":7},{"id":110,"name":"م.م بلال نشأت","college":"التقنية الهندسية","dept":"هندسة تقنيات الامن السيبراني","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":5},{"id":111,"name":"د محمد جواد","college":"التقنية الهندسية","dept":"هندسة تقنيات الامن السيبراني","title_code":"other","title_rank":1,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاربعاء"],"in_committee":false,"gender":"male","phone":"nan","total_rank":4},{"id":112,"name":"د احمد مطر","college":"التقنية الهندسية","dept":"هندسة تقنيات الامن السيبراني","title_code":"other","title_rank":1,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":4},{"id":113,"name":"د مروان بدران","college":"التقنية الهندسية","dept":"هندسة تقنيات الامن السيبراني","title_code":"other","title_rank":1,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاربعاء"],"in_committee":false,"gender":"male","phone":"nan","total_rank":4},{"id":114,"name":"م.م امجد محمود","college":"التقنية الهندسية","dept":"هندسة تقنيات الامن السيبراني","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاربعاء"],"in_committee":false,"gender":"male","phone":"nan","total_rank":5},{"id":115,"name":"د رعد محمد وفر","college":"التقنية الهندسية","dept":"هندسة تقنيات حفر الابار والاستكشافات النفطية","title_code":"other","title_rank":1,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7901210122","total_rank":12},{"id":116,"name":"م.م حسين نجم عبد","college":"التقنية الهندسية","dept":"هندسة تقنيات حفر الابار والاستكشافات النفطية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7708780830","total_rank":14},{"id":117,"name":"م.م احمد عباس علي","college":"التقنية الهندسية","dept":"هندسة تقنيات حفر الابار والاستكشافات النفطية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7734989714","total_rank":5},{"id":118,"name":"أ.د.وليد خلف حمودي","college":"التقنيات الطبية والصحية","dept":"تقنيات التجميل بالليزر","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7707916896","total_rank":17},{"id":119,"name":"م.م.ميسرة أزهر مصلح","college":"التقنيات الطبية والصحية","dept":"تقنيات التجميل و الليزر","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7704550459","total_rank":14},{"id":120,"name":"م.د.روى محمد","college":"التقنيات الطبية والصحية","dept":"تقنيات التجميل و الليزر","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7830481542","total_rank":17},{"id":121,"name":"م.د.منى بهاء الدين مصطفى","college":"التقنيات الطبية والصحية","dept":"تقنيات التجميل و الليزر","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين"],"in_committee":false,"gender":"male","phone":"7713014430","total_rank":7},{"id":122,"name":"م.د.لبنى عبد الكريم","college":"التقنيات الطبية والصحية","dept":"تقنيات التجميل و الليزر","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت"],"in_committee":false,"gender":"male","phone":"7902801977","total_rank":7},{"id":123,"name":"ا.د. سلوى شلش","college":"التقنيات الطبية والصحية","dept":"تقنيات التجميل و الليزر","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["الثلاثاء","الاربعاء"],"in_committee":false,"gender":"female","phone":"nan","total_rank":19},{"id":124,"name":"م.م.رنا أمين حكمت","college":"التقنيات الطبية والصحية","dept":"تقنيات التجميل و الليزر","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت"],"in_committee":false,"gender":"male","phone":"7702762408","total_rank":5},{"id":125,"name":"أ.د مهدي حسن سهيل","college":"التقنيات الطبية والصحية","dept":"تقنيات البصريات","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7702766717","total_rank":17},{"id":126,"name":"م.م حيدر محمود حسن","college":"التقنيات الطبية والصحية","dept":"تقنيات البصريات","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7710240803","total_rank":14},{"id":127,"name":"أ.م.د اكرم نوري محمد","college":"التقنيات الطبية والصحية","dept":"تقنيات البصريات","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7718484337","total_rank":18},{"id":128,"name":"م.د فاضل عباس عمران","college":"التقنيات الطبية والصحية","dept":"تقنيات البصريات","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7903294832","total_rank":17},{"id":129,"name":"م.د فرقان ماجد كاظم","college":"التقنيات الطبية والصحية","dept":"تقنيات البصريات","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7705308793","total_rank":17},{"id":130,"name":"م.د زينة عبدالله خلف","college":"التقنيات الطبية والصحية","dept":"تقنيات البصريات","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7705706315","total_rank":17},{"id":131,"name":"م.د دينا احمد كافي","college":"التقنيات الطبية والصحية","dept":"تقنيات البصريات","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين"],"in_committee":false,"gender":"female","phone":"7702423430","total_rank":7},{"id":132,"name":"م.د توفيق مهدي","college":"التقنيات الطبية والصحية","dept":"تقنيات البصريات","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد"],"in_committee":false,"gender":"male","phone":"7709271068","total_rank":7},{"id":133,"name":"م.م تبارك عمار صباح","college":"التقنيات الطبية والصحية","dept":"تقنيات البصريات","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الثلاثاء"],"in_committee":false,"gender":"female","phone":"7700453587","total_rank":5},{"id":134,"name":"م.م رند حيدر","college":"التقنيات الطبية والصحية","dept":"تقنيات البصريات","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد"],"in_committee":false,"gender":"female","phone":"7716342134","total_rank":5},{"id":135,"name":"م.م.محمد نصيف","college":"التقنيات الطبية والصحية","dept":"تقنيات الاشعة والسونار","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7818185041","total_rank":14},{"id":136,"name":"م.م.علي سرمد","college":"التقنيات الطبية والصحية","dept":"تقنيات التخدير","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7748882260","total_rank":14},{"id":137,"name":"م.د.لقاء صباح حسن","college":"التقنيات الطبية والصحية","dept":"تقنيات صناعة اسنان","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7710977392","total_rank":16},{"id":138,"name":"ا.د. محمد عبد الهادي","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين","الاربعاء"],"in_committee":false,"gender":"male","phone":"7715890843","total_rank":19},{"id":139,"name":"م.د. ايمان شاكر","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاربعاء"],"in_committee":false,"gender":"female","phone":"7702514429","total_rank":17},{"id":140,"name":"م.م. ايلاف عبد الجبار","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الاحد","الاربعاء"],"in_committee":false,"gender":"female","phone":"7705740225","total_rank":5},{"id":141,"name":"م.م. محمد ذياب","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد"],"in_committee":false,"gender":"male","phone":"7827445884","total_rank":15},{"id":142,"name":"ا.د. احمد جاسم","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الثلاثاء","السبت"],"in_committee":false,"gender":"male","phone":"7819516256","total_rank":9},{"id":143,"name":"ا.م.د. خليل ابراهيم","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7902767636","total_rank":16},{"id":144,"name":"م.م. عمر جمال","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7718439455","total_rank":14},{"id":145,"name":"م.م. مجيد جاسم","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7715363351","total_rank":15},{"id":146,"name":"م.د. سحر احمد","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7708899649","total_rank":17},{"id":147,"name":"م.د. محمد جواد","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7803443773","total_rank":17},{"id":148,"name":"ا.د.عبد الحسين حسن كاظم","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7811804810","total_rank":16},{"id":149,"name":"ا.م.د.احمد فليح حسن","college":"التقنيات الطبية والصحية","dept":"تقنيات المختبرات الطبية","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"معاون عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7707347902","total_rank":15},{"id":150,"name":"أ.م.د اسامة رشيد مجيد","college":"القانون","dept":"القانون","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7702440869","total_rank":15},{"id":151,"name":"أ.م.د ايمان جسام محمد","college":"القانون","dept":"القانون","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"معاون عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7736712866","total_rank":15},{"id":152,"name":"أ.د محمود محمد داود","college":"القانون","dept":"القانون","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين"],"in_committee":false,"gender":"male","phone":"7778361000","total_rank":19},{"id":153,"name":"أ.د عادل حمزة عثمان","college":"القانون","dept":"القانون","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7704258453","total_rank":19},{"id":154,"name":"م.د ازهر مصلح حمد","college":"القانون","dept":"القانون","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7849577422","total_rank":17},{"id":155,"name":"م.د فرحان مطر سلوم","college":"القانون","dept":"القانون","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7707924244","total_rank":17},{"id":156,"name":"م.د غسان عدنان عبدالله","college":"القانون","dept":"القانون","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7746943388","total_rank":17},{"id":157,"name":"م.د باسم عبدالسادة خليف","college":"القانون","dept":"القانون","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت"],"in_committee":false,"gender":"male","phone":"7711000800","total_rank":17},{"id":158,"name":"م.د خالد شهاب احمد","college":"القانون","dept":"القانون","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7704258453","total_rank":17},{"id":159,"name":"م.م احمد مكي ابراهيم","college":"القانون","dept":"القانون","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر كلية","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7733553350","total_rank":12},{"id":160,"name":"م.م قاسم محمد قاسم","college":"القانون","dept":"القانون","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7715129469","total_rank":15},{"id":161,"name":"م.م نورالدين مصطفى","college":"القانون","dept":"القانون","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7512852037","total_rank":15},{"id":162,"name":"م.م عبيد عيسى تركي","college":"القانون","dept":"القانون","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7722410775","total_rank":15},{"id":163,"name":"م.م محمد صباح حسن","college":"القانون","dept":"القانون","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7700089760","total_rank":15},{"id":164,"name":"م.م نورالهدى كريم","college":"القانون","dept":"القانون","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7728639989","total_rank":15},{"id":165,"name":"م.م منال محمد","college":"القانون","dept":"القانون","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7711126974","total_rank":15},{"id":166,"name":"م.د رعد كاظم محسن","college":"القانون","dept":"القانون","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء"],"in_committee":false,"gender":"male","phone":"7802580361","total_rank":7},{"id":167,"name":"أ.م.د باسم ذهيب خلف","college":"القانون","dept":"القانون","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت"],"in_committee":false,"gender":"male","phone":"7719970075","total_rank":8},{"id":168,"name":"أ.د علي طلال هادي","college":"القانون","dept":"القانون","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين"],"in_committee":false,"gender":"male","phone":"784877466","total_rank":9},{"id":169,"name":"م.م رفل شوقي خضر","college":"القانون","dept":"القانون","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين"],"in_committee":false,"gender":"male","phone":"7700119957","total_rank":5},{"id":170,"name":"م.م الاء شهاب خضر","college":"القانون","dept":"القانون","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الاحد","الثلاثاء"],"in_committee":false,"gender":"female","phone":"7860404980","total_rank":5},{"id":171,"name":"أ.م.د مجيد حمود حمادي","college":"التمريض","dept":"التمرض","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7800824550","total_rank":15},{"id":172,"name":"م.د ريا خضير محسن","college":"التمريض","dept":"التمرض","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"معاون عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7811813542","total_rank":14},{"id":173,"name":"أ.د الهام امين جدوع","college":"التمريض","dept":"التمرض","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7730363943","total_rank":19},{"id":174,"name":"م.د زيد جابر حمد","college":"التمريض","dept":"التمرض","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7701270795","total_rank":17},{"id":175,"name":"م.د محمد عزيز حسن","college":"التمريض","dept":"التمرض","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7713737626","total_rank":17},{"id":176,"name":"م.د ورود علي محمود","college":"التمريض","dept":"التمرض","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"771055504","total_rank":17},{"id":177,"name":"م.د محمد حمزة مهدي","college":"التمريض","dept":"التمرض","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين"],"in_committee":true,"gender":"male","phone":"7827605060","total_rank":17},{"id":178,"name":"م.د انوار سعد قاسم","college":"التمريض","dept":"التمرض","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7831269038","total_rank":17},{"id":179,"name":"م.م طه قاسم احمد","college":"التمريض","dept":"التمرض","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["الاثنين","الثلاثاء"],"in_committee":false,"gender":"male","phone":"7738355440","total_rank":15},{"id":180,"name":"م.م الاء صباح غزال","college":"التمريض","dept":"التمرض","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7731311988","total_rank":15},{"id":181,"name":"م.م بلال ماجد سعيد","college":"التمريض","dept":"التمرض","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"78388804305","total_rank":15},{"id":182,"name":"م.م عباس جبر محمد","college":"التمريض","dept":"التمرض","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد"],"in_committee":false,"gender":"male","phone":"7700791298","total_rank":5},{"id":183,"name":"م.م شذى صلاح جاسم","college":"التمريض","dept":"التمرض","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين"],"in_committee":false,"gender":"female","phone":"7742312730","total_rank":5},{"id":184,"name":"ا.د هناء عبدالغفار حمود","college":"الادارة والاقتصاد","dept":"المحاسبية والمصرفية","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"معاون عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7725651566","total_rank":16},{"id":185,"name":"ا.د محمد حسن رشم","college":"الادارة والاقتصاد","dept":"ادارة الاعمال","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7702079161","total_rank":17},{"id":186,"name":"ا.م.د علي حسين محمد","college":"الادارة والاقتصاد","dept":"الادارة الصناعية","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7706242065","total_rank":16},{"id":187,"name":"ا.د اسامة عبدالمجيد عبدالحميد","college":"الادارة والاقتصاد","dept":"المحاسبية والمصرفية","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["الاثنين","الثلاثاء"],"in_committee":false,"gender":"male","phone":"7700610788","total_rank":19},{"id":188,"name":"ا.م خضير عباس احمد","college":"الادارة والاقتصاد","dept":"المحاسبية والمصرفية","title_code":"asst","title_rank":3,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7711448857","total_rank":16},{"id":189,"name":"م.د ماجدة عبدالمجيد عبدالعزيز","college":"الادارة والاقتصاد","dept":"ادارة المخاطر والتأمين","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7902986853","total_rank":15},{"id":190,"name":"م.د فهيمة اصليوه حيدو","college":"الادارة والاقتصاد","dept":"المحاسبية والمصرفية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7709784359","total_rank":15},{"id":191,"name":"م.د اتحاد شاكر محمود","college":"الادارة والاقتصاد","dept":"المحاسبية والمصرفية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7736433910","total_rank":17},{"id":192,"name":"م.م شاكر سلمان فياض","college":"الادارة والاقتصاد","dept":"ادارة المخاطر والتأمين","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7715032154","total_rank":14},{"id":193,"name":"م.م مصطفى خالد عبدالهادي","college":"الادارة والاقتصاد","dept":"المحاسبية والمصرفية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7815677300","total_rank":14},{"id":194,"name":"م.م نورا صبري شكر","college":"الادارة والاقتصاد","dept":"ادارة الاعمال","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7802646457","total_rank":14},{"id":195,"name":"م.م اية حسن عطية","college":"الادارة والاقتصاد","dept":"المحاسبية والمصرفية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7727133902","total_rank":15},{"id":196,"name":"م.م اسلام عبيد صالح","college":"الادارة والاقتصاد","dept":"المحاسبية والمصرفية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7806670905","total_rank":15},{"id":197,"name":"م.م احمد فاضل مدحي","college":"الادارة والاقتصاد","dept":"ادارة الاعمال","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7815718342","total_rank":15},{"id":198,"name":"م.م حسن علي كاظم","college":"الادارة والاقتصاد","dept":"الادارة الصناعية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7759731269","total_rank":14},{"id":199,"name":"م.م بلال عبدالرزاق عبدالعزيز","college":"الادارة والاقتصاد","dept":"ادارة المخاطر والتأمين","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7703184418","total_rank":15},{"id":200,"name":"م.م عيسى عيال صالح","college":"الادارة والاقتصاد","dept":"الادارة الصناعية","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7719303328","total_rank":15},{"id":201,"name":"م.م هالة غريب محيسن","college":"الادارة والاقتصاد","dept":"ادارة الاعمال","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7810866961","total_rank":15},{"id":202,"name":"م.م عمر عبدالأله فاضل","college":"الصيدلة","dept":"الصيدلة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"معاون عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":12},{"id":203,"name":"أ.م.د.شيماء عبد الواحد عبد الامير","college":"الصيدلة","dept":"الصيدلة","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":18},{"id":204,"name":"م.د.حسام هادي كاظم","college":"الصيدلة","dept":"الصيدلة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":17},{"id":205,"name":"م.د.جعفر ستار شياع","college":"الصيدلة","dept":"الصيدلة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":17},{"id":206,"name":"م.د صـفاء فاخر مخيلف","college":"الصيدلة","dept":"الصيدلة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":17},{"id":207,"name":"م.د نيران عبد الحسين محمد","college":"الصيدلة","dept":"الصيدلة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":17},{"id":208,"name":"م.د.مريم حامد خليل","college":"الصيدلة","dept":"الصيدلة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":17},{"id":209,"name":"م.د نــــور مـــنير مـحـمـد","college":"الصيدلة","dept":"الصيدلة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":17},{"id":210,"name":"م.د.أحمد زكريا يحيى","college":"الصيدلة","dept":"الصيدلة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":17},{"id":211,"name":"م.م احمـد محمـد محمـود","college":"الصيدلة","dept":"الصيدلة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":15},{"id":212,"name":"م.م ابراهيم عامر سلمان","college":"الصيدلة","dept":"الصيدلة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":213,"name":"م.م.رنا فارس سلمان","college":"الصيدلة","dept":"الصيدلة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":15},{"id":214,"name":"م.م.براء ناهض سليم","college":"الصيدلة","dept":"الصيدلة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":15},{"id":215,"name":"م.م.همام لؤي قصي","college":"الصيدلة","dept":"الصيدلة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":216,"name":"م.م مصطفى عيدان جمعة","college":"الصيدلة","dept":"الصيدلة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":15},{"id":217,"name":"م.م ايسر جمعه","college":"الصيدلة","dept":"الصيدلة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":15},{"id":218,"name":"م.م امير حسن حمزة","college":"الصيدلة","dept":"الصيدلة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":15},{"id":219,"name":"م.م ابراهيم محمود حسن","college":"الصيدلة","dept":"الصيدلة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"nan","total_rank":15},{"id":220,"name":"ا.د. صباح فخرالدين عبدالقادر","college":"الفنون","dept":"التصميم","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7902204422","total_rank":16},{"id":221,"name":"ا.م.د. كريم عبد ساجر","college":"الفنون","dept":"التصميم","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"معاون عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7756571051","total_rank":15},{"id":222,"name":"م.د. محمد مهذول محمد","college":"الفنون","dept":"التصميم","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7744419101","total_rank":17},{"id":223,"name":"م.م. شعلة علاء الدين درويش","college":"الفنون","dept":"التصميم","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7707378912","total_rank":15},{"id":224,"name":"م.م. اية قتيبة عبدالخالق كريم","college":"الفنون","dept":"التصميم","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7705911419","total_rank":15},{"id":225,"name":"م.م. رسل غسان عواد","college":"الفنون","dept":"التصميم","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7500323685","total_rank":15},{"id":226,"name":"م.م. سارة إبراهيم خنجر احمد","college":"الفنون","dept":"التصميم","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7764125487","total_rank":14},{"id":227,"name":"ا.م.د. حكمت رشيد فخري","college":"الفنون","dept":"الازياء والموضة","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7903262412","total_rank":16},{"id":228,"name":"م.م. سناء محمود ابراهيم","college":"الفنون","dept":"الازياء والموضة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"nan","total_rank":14},{"id":229,"name":"م.د. رواء مصطفى خلف","college":"الفنون","dept":"التصميم","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاربعاء"],"in_committee":false,"gender":"male","phone":"7712973167","total_rank":7},{"id":230,"name":"م.م. شهد عباس فاضل","college":"الفنون","dept":"التصميم","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الاثنين","الثلاثاء"],"in_committee":false,"gender":"female","phone":"7739043736","total_rank":5},{"id":231,"name":"م.م. علي عامر عبد الرزاق","college":"الفنون","dept":"التصميم","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الاحد"],"in_committee":false,"gender":"male","phone":"7813615520","total_rank":5},{"id":232,"name":".م. ميس فلاح راضي محمد","college":"الفنون","dept":"التصميم","title_code":"other","title_rank":1,"has_phd":false,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد"],"in_committee":false,"gender":"male","phone":"7810065429","total_rank":4},{"id":233,"name":"م.د. حسين علاء راضي","college":"الفنون","dept":"التصميم","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الثلاثاء"],"in_committee":false,"gender":"male","phone":"7701740304","total_rank":7},{"id":234,"name":"أ.م.د علي حبيب كشمر","college":"العلوم","dept":"علوم الامن السيبراني","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7736818458","total_rank":16},{"id":235,"name":"م.د احمد ابراهيم صالح","college":"العلوم","dept":"علوم الامن السيبراني","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7714330922","total_rank":17},{"id":236,"name":"م,م شيماء عبدالامير","college":"العلوم","dept":"علوم الامن السيبراني","title_code":"other","title_rank":1,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7705310103","total_rank":13},{"id":237,"name":"م.م لؤي فليح حسن","college":"العلوم","dept":"علوم الامن السيبراني","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الثلاثاء"],"in_committee":false,"gender":"male","phone":"7806839399","total_rank":15},{"id":238,"name":"م.م محمد الباقر جبار مجيد","college":"العلوم","dept":"علوم الامن السيبراني","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7719727888","total_rank":15},{"id":239,"name":"أ.م.د. فضل احمد سعيد","college":"العلوم","dept":"علوم الحياة","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7711878555","total_rank":15},{"id":240,"name":"م.د. صادق مولى جعفر","college":"العلوم","dept":"علوم الحياة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"معاون عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7902201831","total_rank":14},{"id":241,"name":"م.م. سرى طالب جاسم","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"مقرر قسم","pos_rank":2,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7725462944","total_rank":14},{"id":242,"name":"أ.د. عماد أحمد محمود","college":"العلوم","dept":"علوم الحياة","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7722668458","total_rank":19},{"id":243,"name":"أ.د. مؤيد صبري شوكت","college":"العلوم","dept":"علوم الحياة","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7700634156","total_rank":19},{"id":244,"name":"أ.د. صباح عبدالحميد عبدالرحمن","college":"العلوم","dept":"علوم الحياة","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7902921737","total_rank":19},{"id":245,"name":"أ.د. حسين محيسن ختلان","college":"العلوم","dept":"علوم الحياة","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7727087808","total_rank":19},{"id":246,"name":"أ.م.د. لطيف عبدالله حمد","college":"العلوم","dept":"علوم الحياة","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7700812118","total_rank":18},{"id":247,"name":"أ.م.د. امال عبدالسلام عبدالرحمن","college":"العلوم","dept":"علوم الحياة","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين","الثلاثاء"],"in_committee":false,"gender":"male","phone":"7710534759","total_rank":18},{"id":248,"name":"م.د. حياد جمعة حميد","college":"العلوم","dept":"علوم الحياة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7700405135","total_rank":15},{"id":249,"name":"م.م. علي عبدالعزيز عبدالرسول","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7735211588","total_rank":15},{"id":250,"name":"م.م. مريم لطيف عبدالله","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"female","phone":"7700812170","total_rank":15},{"id":251,"name":"م.م. سجى عامر أحمد","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد"],"in_committee":false,"gender":"female","phone":"7729066360","total_rank":15},{"id":252,"name":"م.م. بان موفق عبدالهادي","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاربعاء"],"in_committee":false,"gender":"female","phone":"7730777177","total_rank":15},{"id":253,"name":"م.م. عبدالله أيوب كامل","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7807790914","total_rank":15},{"id":254,"name":"م.م. كامل حسن ياسر","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7725265637","total_rank":15},{"id":255,"name":"م.م. أشواق عباس فاضل","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":true,"gender":"male","phone":"7713884964","total_rank":15},{"id":256,"name":"م.م. زهراء بشيرجابر","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين","الثلاثاء"],"in_committee":false,"gender":"female","phone":"7742237707","total_rank":15},{"id":257,"name":"م.م. بنين سعدي قاسم","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7715869540","total_rank":15},{"id":258,"name":"م.م. زهراء داود سلمان","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7706334959","total_rank":15},{"id":259,"name":"م.م. تقوى عبدالقادر عبدالدائم","college":"العلوم","dept":"علوم الحياة","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"7740792017","total_rank":15},{"id":260,"name":"ا.م.د. علي مخلف خليفة","college":"العلوم","dept":"علوم الفيزياء الطبية","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7818307773","total_rank":16},{"id":261,"name":"م.د. علي جواد سعود","college":"العلوم","dept":"علوم الفيزياء الطبية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["الاحد","الاثنين","الثلاثاء"],"in_committee":false,"gender":"male","phone":"7713574898","total_rank":17},{"id":262,"name":"ا.د. عادل حمزة عثمان","college":"العلوم","dept":"علوم الادلة الجنائية","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"رئيس قسم","pos_rank":1,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7704258453","total_rank":17},{"id":263,"name":"م.د. خطاب ازهر مصلح","college":"العلوم","dept":"علوم الادلة الجنائية","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاثنين"],"in_committee":false,"gender":"male","phone":"7700235570","total_rank":7},{"id":264,"name":"م.م مروة صارم عبد الهادي","college":"الاعلام","dept":"الاعلام","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسية","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"nan","total_rank":15},{"id":265,"name":"م.م اية هشام طاهر","college":"الاعلام","dept":"الاعلام","title_code":"mm","title_rank":2,"has_phd":false,"mtype":"ملاك","type_rank":10,"pos":"تدريسية","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"female","phone":"nan","total_rank":15},{"id":266,"name":"ا.د منصور جميل","college":"التربية البدنية وعلوم الرياضة","dept":"التربية البدنية وعلوم الرياضة","title_code":"prof","title_rank":6,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7902570105","total_rank":16},{"id":267,"name":"م.د كرم رياض","college":"التربية البدنية وعلوم الرياضة","dept":"التربية البدنية وعلوم الرياضة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"معاون عميد","pos_rank":0,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7901198394","total_rank":14},{"id":268,"name":"ا.م.د جعفر جبار علي","college":"التربية البدنية وعلوم الرياضة","dept":"التربية البدنية وعلوم الرياضة","title_code":"asst_prof","title_rank":5,"has_phd":true,"mtype":"ملاك","type_rank":10,"pos":"تدريسي","pos_rank":3,"days":["السبت","الاحد","الاثنين","الثلاثاء","الاربعاء","الخميس"],"in_committee":false,"gender":"male","phone":"7904369493","total_rank":18},{"id":269,"name":"م.د سيف الدين خالد احمد","college":"التربية البدنية وعلوم الرياضة","dept":"التربية البدنية وعلوم الرياضة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الثلاثاء"],"in_committee":false,"gender":"male","phone":"7825558885","total_rank":7},{"id":270,"name":"م.د قصي","college":"التربية البدنية وعلوم الرياضة","dept":"التربية البدنية وعلوم الرياضة","title_code":"lec_dr","title_rank":4,"has_phd":true,"mtype":"محاضر","type_rank":0,"pos":"تدريسي","pos_rank":3,"days":["الاثنين"],"in_committee":false,"gender":"male","phone":"7838487859","total_rank":7}];
+const BASE_HALLS=[{"name":"B01","monitors_needed":2},{"name":"B02","monitors_needed":2},{"name":"B03","monitors_needed":2},{"name":"B04","monitors_needed":2},{"name":"B11","monitors_needed":2},{"name":"B25","monitors_needed":2},{"name":"B31","monitors_needed":2},{"name":"B32","monitors_needed":2},{"name":"B34","monitors_needed":2},{"name":"B35","monitors_needed":2},{"name":"بابل","monitors_needed":4},{"name":"C11","monitors_needed":2},{"name":"C12","monitors_needed":2},{"name":"C13","monitors_needed":2},{"name":"C14","monitors_needed":2},{"name":"C15","monitors_needed":2},{"name":"C21","monitors_needed":2},{"name":"C22","monitors_needed":2},{"name":"C23","monitors_needed":2},{"name":"C24","monitors_needed":2},{"name":"C31","monitors_needed":2},{"name":"C32","monitors_needed":2},{"name":"C33","monitors_needed":2},{"name":"C34","monitors_needed":2},{"name":"C35","monitors_needed":2},{"name":"C36","monitors_needed":2},{"name":"C37","monitors_needed":2},{"name":"C38","monitors_needed":2},{"name":"C39","monitors_needed":2},{"name":"بغداد","monitors_needed":4},{"name":"D11","monitors_needed":2},{"name":"D12","monitors_needed":2},{"name":"D21","monitors_needed":2},{"name":"D22","monitors_needed":2},{"name":"D23","monitors_needed":2},{"name":"D31","monitors_needed":2},{"name":"D32","monitors_needed":2},{"name":"D33","monitors_needed":2},{"name":"نينوى","monitors_needed":4},{"name":"البصرة","monitors_needed":4},{"name":"P01","monitors_needed":2},{"name":"P02","monitors_needed":2},{"name":"P03","monitors_needed":2},{"name":"P11","monitors_needed":2},{"name":"P12","monitors_needed":2},{"name":"P13","monitors_needed":2},{"name":"P14","monitors_needed":2},{"name":"P21","monitors_needed":4},{"name":"P22","monitors_needed":4},{"name":"P41","monitors_needed":4},{"name":"P42","monitors_needed":2},{"name":"F11","monitors_needed":2},{"name":"F12","monitors_needed":2},{"name":"F13","monitors_needed":2},{"name":"F14","monitors_needed":2},{"name":"F15","monitors_needed":2},{"name":"F16","monitors_needed":2},{"name":"F17","monitors_needed":2},{"name":"F18","monitors_needed":2},{"name":"F19","monitors_needed":2},{"name":"F21","monitors_needed":2},{"name":"F22","monitors_needed":2},{"name":"F23","monitors_needed":2},{"name":"F24","monitors_needed":2},{"name":"F25","monitors_needed":2},{"name":"F26","monitors_needed":2},{"name":"F27","monitors_needed":2},{"name":"F28","monitors_needed":2},{"name":"F41","monitors_needed":3},{"name":"F42","monitors_needed":3},{"name":"F43","monitors_needed":3},{"name":"F44","monitors_needed":3},{"name":"الرازي","monitors_needed":3},{"name":"Q21","monitors_needed":3},{"name":"Q21","monitors_needed":3}];
+
+let STAFF=JSON.parse(JSON.stringify(BASE_STAFF));
+let HALLS=JSON.parse(JSON.stringify(BASE_HALLS));
+let dist={};
+let selH=new Set(HALLS.map(h=>h.name));
+let nextId=STAFF.length+100;
+
+const TL={prof:'أ.د',asst_prof:'أ.م.د',lec_dr:'م.د',dr:'د.',asst:'أ.م',mm:'م.م',other:'—'};
+const TC={prof:'bp2',asst_prof:'ba',lec_dr:'bd',dr:'bd',asst:'bm2',mm:'bm2',other:''};
+const POS_RANK={تدريسي:3,تدريسية:3,'مقرر قسم':2,'رئيس قسم':1,'مقرر كلية':0,عميد:0,'معاون عميد':0};
+const TYPE_RANK={ملاك:10,محاضر:0};
+
+// ═══════════════ INIT ═══════════════
+window.onload=()=>{
+  rebuildCollegeFilter();
+  RS(); RHG(); AC();
+  document.getElementById('tot-staff').textContent=STAFF.length;
+  document.getElementById('tot-halls').textContent=HALLS.length;
+};
+
+function rebuildCollegeFilter(){
+  const sel=document.getElementById('fc');
+  const cur=sel.value;
+  while(sel.options.length>1)sel.remove(1);
+  [...new Set(STAFF.map(s=>s.college))].sort().forEach(c=>{
+    const o=document.createElement('option');o.value=c;o.text=c;sel.add(o);
+  });
+  sel.value=cur;
+}
+
+// ═══════════════ TABS ═══════════════
+function T(id,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('p-'+id).classList.add('on');
+  if(id==='exp')GE();
+  if(id==='remain')calcRemain();
+}
+
+// ═══════════════ MODALS ═══════════════
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+window.onclick=e=>{if(e.target.classList.contains('modal-bg'))e.target.classList.remove('show');};
+
+// ═══════════════ STAFF TABLE ═══════════════
+function RS(){
+  const q=(document.getElementById('sq').value||'').trim();
+  const fc=document.getElementById('fc').value;
+  const ft=document.getElementById('ft').value;
+  const fr=document.getElementById('fr').value;
+  const fg=document.getElementById('fg').value;
+  const fres=document.getElementById('fres').value;
+  let d=STAFF.filter(s=>{
+    if(q&&!s.name.includes(q))return false;
+    if(fc&&s.college!==fc)return false;
+    if(ft&&s.mtype!==ft)return false;
+    if(fr==='sup'&&!s.has_phd)return false;
+    if(fr==='mon'&&!['mm','asst'].includes(s.title_code))return false;
+    if(fg&&s.gender!==fg)return false;
+    if(fres==='yes'&&!s.is_reserve)return false;
+    if(fres==='no'&&s.is_reserve)return false;
+    return true;
+  });
+  document.getElementById('scnt').textContent=d.length+' / '+STAFF.length;
+  document.getElementById('stb').innerHTML=d.map((s,i)=>`
+    <tr>
+      <td style="color:#bbb">${i+1}</td>
+      <td style="font-weight:600">${s.name}${s.is_manual?'<span class="bx bor" style="margin-right:4px">جديد</span>':''}</td>
+      <td style="font-size:11px">${s.college}</td>
+      <td style="font-size:11px;color:#666">${s.dept}</td>
+      <td><span class="bx ${s.mtype==='ملاك'?'bm':'bh'}">${s.mtype}</span></td>
+      <td style="font-size:11px">${s.pos||'—'}</td>
+      <td><span class="bx ${TC[s.title_code]||''}">${TL[s.title_code]||'—'}</span></td>
+      <td><span class="bx ${s.gender==='male'?'bml':'bfl'}">${s.gender==='male'?'ذكر':'أنثى'}</span></td>
+      <td style="font-size:11px;color:#555">${s.days.join('، ')||'—'}</td>
+      <td>${s.in_committee?'<span class="bx bco">لجنة</span>':'—'}</td>
+      <td>
+        <button class="btn bsm ${s.is_reserve?'bo':'bsm'}" onclick="toggleReserve(${s.id})" title="${s.is_reserve?'إزالة من الاحتياط':'إضافة للاحتياط'}">
+          ${s.is_reserve?'⭐ احتياط':'☆ احتياط'}
+        </button>
+      </td>
+      <td>${s.is_manual?`<button class="btn bsm br" onclick="removeStaff(${s.id})">🗑</button>`:''}</td>
+    </tr>`).join('');
+}
+
+function toggleReserve(id){
+  const s=STAFF.find(x=>x.id===id);
+  if(s){s.is_reserve=!s.is_reserve;RS();updateReserveModal();}
+}
+function removeStaff(id){
+  STAFF=STAFF.filter(s=>s.id!==id);
+  document.getElementById('tot-staff').textContent=STAFF.length;
+  RS();AC();rebuildCollegeFilter();
+}
+
+// ═══════════════ ADD STAFF ═══════════════
+function toggleDay(el){el.classList.toggle('on');}
+
+function getTitleFromName(name){
+  const n=name.trim();
+  const checks=[
+    ['أ.د','prof',6,true],['ا.د','prof',6,true],
+    ['أ.م.د','asst_prof',5,true],['ا.م.د','asst_prof',5,true],
+    ['م.د','lec_dr',4,true],['د.','dr',4,true],
+    ['أ.م','asst',3,false],['ا.م','asst',3,false],
+    ['م.م.','mm',2,false],['م.م','mm',2,false],
+    ['م. ','mm',2,false],['م.','mm',2,false],
+  ];
+  for(const [pfx,code,rank,phd] of checks)
+    if(n.startsWith(pfx))return{title_code:code,title_rank:rank,has_phd:phd};
+  return{title_code:'other',title_rank:1,has_phd:false};
+}
+
+const FEM=new Set(['هند','ليلى','منى','هبة','مريم','سيناء','ايالف','رنا','لميس','رونق','ضحى','رغد','ياسمين','استبرق','نور','فاطمة','امل','نبأ','بان','هيفاء','ريما','شهد','نغم','رحمه','رغدة','سارة','مينا','همسة','سجى','ذكريات','تبارك','علياء','ايثار','وداد','هدى','فرح','غفران','زينب','ميسرة','روى','لبنى','ايلاف','زهراء','بنين','تقوى','اشواق','مروة','اية','شذى','الاء','نورا','هالة','ريا','الهام','ورود','انوار','هناء','سلوى','كفاء','لقاء','دينا','زينة','رند','شيماء','منال','نورالهدى','فهيمة','اتحاد','ماجدة','سرى','سحر']);
+function guessGender(name){
+  const parts=name.split(' ');
+  for(const p of parts.slice(1,4)){
+    const c=p.replace(/[.\u0627\u0644]/g,'').trim();
+    if(FEM.has(c)||FEM.has(p))return'female';
+  }
+  return'male';
+}
+
+function addStaff(){
+  const name=document.getElementById('an').value.trim();
+  const college=document.getElementById('acol').value.trim();
+  const dept=document.getElementById('adpt').value.trim();
+  const phone=document.getElementById('aph').value.trim();
+  const mtype=document.getElementById('amt').value;
+  const pos=document.getElementById('apos').value;
+  const comm=document.getElementById('acomm').checked;
+  const res=document.getElementById('ares').checked;
+  const days=[...document.querySelectorAll('.dpill.on')].map(p=>p.dataset.d);
+  const err=document.getElementById('add-err');
+  if(!name||!college||!dept){err.textContent='الرجاء تعبئة الاسم والكلية والقسم';err.style.display='flex';return;}
+  err.style.display='none';
+  const ti=getTitleFromName(name);
+  const pr=POS_RANK[pos]??1;
+  const tr=TYPE_RANK[mtype]??0;
+  const newS={
+    id:nextId++,name,college,dept,
+    title_code:ti.title_code,title_rank:ti.title_rank,has_phd:ti.has_phd,
+    mtype,type_rank:tr,pos,pos_rank:pr,
+    days,in_committee:comm,gender:guessGender(name),
+    phone,total_rank:tr+pr+ti.title_rank,
+    is_reserve:res,is_manual:true
+  };
+  STAFF.push(newS);
+  if(!selH.has('—')){}
+  document.getElementById('tot-staff').textContent=STAFF.length;
+  rebuildCollegeFilter();
+  RS();AC();
+  closeModal('m-addstaff');
+  document.getElementById('an').value='';
+  AL('✓ تمت إضافة '+name+' إلى قاعدة البيانات','aok');
+}
+
+// ═══════════════ ADD HALL ═══════════════
+function addHall(){
+  const name=document.getElementById('hn').value.trim();
+  const mon=parseInt(document.getElementById('hm').value)||2;
+  const err=document.getElementById('hall-err');
+  if(!name){err.textContent='الرجاء إدخال اسم القاعة';err.style.display='flex';return;}
+  if(HALLS.find(h=>h.name===name)){err.textContent='هذه القاعة موجودة مسبقاً';err.style.display='flex';return;}
+  err.style.display='none';
+  HALLS.push({name,monitors_needed:mon,is_extra:true});
+  selH.add(name);
+  document.getElementById('tot-halls').textContent=HALLS.length;
+  RHG();AC();
+  closeModal('m-addhall');
+  document.getElementById('hn').value='';
+  AL('✓ تمت إضافة قاعة '+name,'aok');
+}
+
+// ═══════════════ RESERVE ═══════════════
+function updateReserveModal(){
+  const rs=STAFF.filter(s=>s.is_reserve);
+  document.getElementById('restbl').innerHTML=rs.length
+    ?rs.map(s=>`<tr>
+        <td style="padding:6px 8px;border:1px solid #eee;font-weight:600">${s.name}</td>
+        <td style="padding:6px 8px;border:1px solid #eee"><span class="bx ${s.mtype==='ملاك'?'bm':'bh'}">${s.mtype}</span></td>
+        <td style="padding:6px 8px;border:1px solid #eee"><span class="bx ${TC[s.title_code]}">${TL[s.title_code]}</span></td>
+        <td style="padding:6px 8px;border:1px solid #eee"><button class="btn bsm br" onclick="toggleReserve(${s.id});updateReserveModal()">إزالة</button></td>
+      </tr>`).join('')
+    :'<tr><td colspan="4" style="padding:12px;text-align:center;color:#aaa">لا توجد قائمة احتياط بعد</td></tr>';
+}
+document.getElementById('m-reserve').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal('m-reserve');});
+document.getElementById('m-reserve').querySelector('.modal').addEventListener('mouseenter',updateReserveModal);
+
+// ═══════════════ HALLS GRID ═══════════════
+function RHG(){
+  document.getElementById('hgrid').innerHTML=HALLS.map(h=>`
+    <label class="hchk ${selH.has(h.name)?'sel':''}">
+      <input type="checkbox" ${selH.has(h.name)?'checked':''} onchange="TH('${h.name}',this.checked)">
+      <span class="hb">${h.name}</span>
+      <span class="hc">(${h.monitors_needed})${h.is_extra?'<span class="bx bor" style="margin-right:3px">إضافي</span>':''}</span>
+    </label>`).join('');
+  document.getElementById('hsel').textContent=selH.size;
+  document.getElementById('tmon').textContent=HALLS.filter(h=>selH.has(h.name)).reduce((s,h)=>s+h.monitors_needed,0);
+}
+function TH(n,v){v?selH.add(n):selH.delete(n);RHG();}
+function SA(){HALLS.forEach(h=>selH.add(h.name));RHG();}
+function DA(){selH.clear();RHG();}
+
+// ═══════════════ AVAILABILITY ═══════════════
+function GA(){
+  const day=document.getElementById('eday').value;
+  const excm=document.getElementById('excm').checked;
+  const exres=document.getElementById('exres').checked;
+  return STAFF.filter(s=>{
+    if(excm&&s.in_committee)return false;
+    if(exres&&s.is_reserve)return false;
+    return s.days.includes(day);
+  });
+}
+function AC(){
+  const av=GA();
+  document.getElementById('av0').textContent=av.length;
+  document.getElementById('av1').textContent=av.filter(s=>s.has_phd).length;
+  document.getElementById('av2').textContent=av.filter(s=>['mm','asst'].includes(s.title_code)).length;
+  document.getElementById('av3').textContent=av.filter(s=>s.gender==='male').length;
+  document.getElementById('av4').textContent=av.filter(s=>s.gender==='female').length;
+  RHG();
+}
+
+// ═══════════════ DISTRIBUTION ENGINE ═══════════════
+function RD(){
+  if(!selH.size){AL('اختر قاعات أولاً','awk');return;}
+  const av=GA().slice().sort((a,b)=>b.total_rank-a.total_rank);
+  const sups=av.filter(s=>s.has_phd);
+  const mons=av.filter(s=>['mm','asst'].includes(s.title_code));
+  const mM=mons.filter(s=>s.gender==='male');
+  const mF=mons.filter(s=>s.gender==='female');
+  const usedS=new Set(),usedM=new Set();
+  dist={};
+  HALLS.filter(h=>selH.has(h.name)).forEach(hall=>{
+    const need=hall.monitors_needed;
+    const sup=sups.find(s=>!usedS.has(s.id)&&!usedM.has(s.id))||null;
+    if(sup)usedS.add(sup.id);
+    const assigns=[];
+    const slots=need-1;
+    if(slots>=2){
+      const m=mM.find(s=>!usedM.has(s.id)&&!usedS.has(s.id));
+      const f=mF.find(s=>!usedM.has(s.id)&&!usedS.has(s.id)&&s.id!==(m&&m.id));
+      if(m){assigns.push(m);usedM.add(m.id);}
+      if(f){assigns.push(f);usedM.add(f.id);}
+      for(let i=assigns.length;i<slots;i++){
+        const nx=mons.find(s=>!usedM.has(s.id)&&!usedS.has(s.id));
+        if(nx){assigns.push(nx);usedM.add(nx.id);}else assigns.push(null);
+      }
+    }else if(slots===1){
+      const nx=mons.find(s=>!usedM.has(s.id)&&!usedS.has(s.id));
+      if(nx){assigns.push(nx);usedM.add(nx.id);}else assigns.push(null);
+    }
+    dist[hall.name]={sup,monitors:assigns};
+  });
+  RDR();DS();AL('✓ تم التوزيع التلقائي بنجاح','aok');
+}
+
+function DS(){
+  const halls=HALLS.filter(h=>selH.has(h.name));
+  let asgn=0,need=0,gok=0;
+  halls.forEach(h=>{
+    need+=h.monitors_needed;
+    const d=dist[h.name];if(!d)return;
+    if(d.sup)asgn++;
+    asgn+=d.monitors.filter(Boolean).length;
+    const ms=d.monitors.filter(Boolean);
+    if(ms.some(m=>m.gender==='male')&&ms.some(m=>m.gender==='female'))gok++;
+  });
+  document.getElementById('d0').textContent=halls.length;
+  document.getElementById('d1').textContent=asgn;
+  document.getElementById('d2').textContent=GA().length;
+  document.getElementById('d3').textContent=Math.max(0,need-asgn);
+  document.getElementById('d4').textContent=gok;
+}
+
+function RDR(){
+  const con=document.getElementById('dres');
+  const halls=HALLS.filter(h=>selH.has(h.name));
+  if(!halls.length||!Object.keys(dist).length){
+    con.innerHTML='<div style="padding:2rem;text-align:center;color:#aaa">اضغط "توزيع تلقائي" للبدء</div>';return;
+  }
+  const av=GA();
+  const supOpts=av.filter(s=>s.has_phd).map(s=>`<option value="${s.id}">${s.name} | ${s.mtype} | ${TL[s.title_code]}</option>`).join('');
+  const monOpts=av.filter(s=>['mm','asst'].includes(s.title_code)).map(s=>`<option value="${s.id}">${s.name} | ${s.gender==='male'?'ذ':'أ'} | ${s.mtype} | ${TL[s.title_code]}</option>`).join('');
+  con.innerHTML=halls.map(hall=>{
+    const d=dist[hall.name]||{sup:null,monitors:[]};
+    const ms=d.monitors.filter(Boolean);
+    const gok=ms.some(m=>m.gender==='male')&&ms.some(m=>m.gender==='female');
+    const gw=!gok&&hall.monitors_needed>1?'<span class="gwarn">⚠ يحتاج ذكر+أنثى</span>':'';
+    function mkS(){let o='<option value="">— غير محدد —</option>'+supOpts;if(d.sup)o=o.replace(`value="${d.sup.id}"`,`value="${d.sup.id}" selected`);return o;}
+    function mkM(cur){let o='<option value="">— غير محدد —</option>'+monOpts;if(cur)o=o.replace(`value="${cur.id}"`,`value="${cur.id}" selected`);return o;}
+    const monRows=Array.from({length:hall.monitors_needed-1},(_,i)=>{
+      const cur=d.monitors[i];
+      return`<div class="arow">
+        <span class="rtag rm">مراقب ${i+1} ${cur?(cur.gender==='male'?'♂':'♀'):''}</span>
+        <select class="msel" onchange="UM('${hall.name}',${i},this.value)">${mkM(cur)}</select>
+        ${cur?`<span class="bx ${cur.mtype==='ملاك'?'bm':'bh'}">${cur.mtype}</span>`:''}
+        ${cur?`<span class="bx ${TC[cur.title_code]}">${TL[cur.title_code]}</span>`:''}
+      </div>`;
+    }).join('');
+    return`<div class="hall-block">
+      <div class="hall-hdr">
+        <div>
+          <span class="hall-title">${hall.name}</span>
+          <span class="hall-meta"> — ${hall.monitors_needed} مراقب</span>
+          ${hall.is_extra?'<span class="bx bor">إضافي</span>':''}
+          ${gw}
+        </div>
+        <div class="prow">
+          ${d.sup?`<span class="bx ${d.sup.mtype==='ملاك'?'bm':'bh'}">${d.sup.mtype}</span>`:''}
+          ${gok?'<span class="bx brs">✓ الجنسان</span>':''}
+        </div>
+      </div>
+      <div class="hall-body">
+        <div class="arow">
+          <span class="rtag rs">مشرف القاعة</span>
+          <select class="msel" style="border-color:#166534" onchange="US2('${hall.name}',this.value)">${mkS()}</select>
+          ${d.sup?`<span class="bx ${TC[d.sup.title_code]}">${TL[d.sup.title_code]}</span>`:''}
+          ${d.sup?`<span class="bx ${d.sup.mtype==='ملاك'?'bm':'bh'}">${d.sup.mtype}</span>`:''}
+        </div>
+        ${monRows}
+      </div>
+    </div>`;
+  }).join('');
+}
+function US2(h,v){const p=STAFF.find(s=>s.id==v)||null;if(!dist[h])dist[h]={sup:null,monitors:[]};dist[h].sup=p;DS();}
+function UM(h,i,v){const p=STAFF.find(s=>s.id==v)||null;if(!dist[h])dist[h]={sup:null,monitors:[]};dist[h].monitors[i]=p;DS();}
+function CD(){dist={};RDR();DS();}
+function AL(msg,cls){const e=document.getElementById('dal');e.className='alert '+cls;e.textContent=msg;e.style.display='flex';setTimeout(()=>e.style.display='none',6000);}
+
+// ═══════════════ REMAINING LIST ═══════════════
+function calcRemain(){
+  const day=document.getElementById('eday').value;
+  const excm=document.getElementById('excm').checked;
+  const rf=document.getElementById('rf').value;
+  // Collect all assigned IDs
+  const assigned=new Set();
+  Object.values(dist).forEach(d=>{
+    if(d.sup)assigned.add(d.sup.id);
+    d.monitors.forEach(m=>{if(m)assigned.add(m.id);});
+  });
+  // Filter available but NOT assigned
+  let remain=STAFF.filter(s=>{
+    if(excm&&s.in_committee)return false;
+    if(!s.days.includes(day))return false;
+    if(assigned.has(s.id))return false;
+    return true;
+  });
+  if(rf==='sup')remain=remain.filter(s=>s.has_phd);
+  else if(rf==='mon')remain=remain.filter(s=>['mm','asst'].includes(s.title_code));
+  else if(rf==='male')remain=remain.filter(s=>s.gender==='male');
+  else if(rf==='female')remain=remain.filter(s=>s.gender==='female');
+  document.getElementById('remcnt').textContent='المتبقون: '+remain.length+' شخص';
+  document.getElementById('remtb').innerHTML=remain.length
+    ?remain.map((s,i)=>`<tr>
+        <td style="color:#bbb">${i+1}</td>
+        <td style="font-weight:600">${s.name}${s.is_reserve?'<span class="bx bor" style="margin-right:4px">احتياط</span>':''}</td>
+        <td style="font-size:11px">${s.college}</td>
+        <td><span class="bx ${s.mtype==='ملاك'?'bm':'bh'}">${s.mtype}</span></td>
+        <td><span class="bx ${TC[s.title_code]}">${TL[s.title_code]}</span></td>
+        <td><span class="bx ${s.gender==='male'?'bml':'bfl'}">${s.gender==='male'?'ذكر':'أنثى'}</span></td>
+        <td style="font-size:11px">${s.pos}</td>
+        <td style="font-size:11px;color:#666">${s.phone||'—'}</td>
+      </tr>`).join('')
+    :'<tr><td colspan="8" style="padding:14px;text-align:center;color:#aaa">لا يوجد متبقون — جميع المتاحين موزَّعون</td></tr>';
+  // Reserve list
+  const res=STAFF.filter(s=>s.is_reserve&&s.days.includes(day)&&!assigned.has(s.id));
+  document.getElementById('restb').innerHTML=res.length
+    ?res.map((s,i)=>`<tr>
+        <td style="color:#bbb">${i+1}</td>
+        <td style="font-weight:600">${s.name}</td>
+        <td style="font-size:11px">${s.college}</td>
+        <td><span class="bx ${s.mtype==='ملاك'?'bm':'bh'}">${s.mtype}</span></td>
+        <td><span class="bx ${TC[s.title_code]}">${TL[s.title_code]}</span></td>
+        <td><span class="bx ${s.gender==='male'?'bml':'bfl'}">${s.gender==='male'?'ذكر':'أنثى'}</span></td>
+        <td style="font-size:11px;color:#666">${s.phone||'—'}</td>
+      </tr>`).join('')
+    :'<tr><td colspan="7" style="padding:12px;text-align:center;color:#aaa">لا يوجد احتياط متاح هذا اليوم</td></tr>';
+}
+
+// ═══════════════ EXPORT ═══════════════
+function GE(){
+  const day=document.getElementById('eday').value;
+  const date=document.getElementById('edate').value;
+  const sesn=document.getElementById('esesn').value;
+  let t='جدول توزيع مراقبي الامتحانات النهائية\n';
+  t+='═'.repeat(65)+'\n';
+  if(sesn)t+='الدورة: '+sesn+'\n';
+  t+='اليوم: '+day+'   التاريخ: '+(date||'___________')+'\n';
+  t+='═'.repeat(65)+'\n\n';
+  t+='الشروط: مشرف ← دكتوراة | مراقبون ← ماجستير (م.م/م.) | ذكر+أنثى في كل قاعة\n';
+  t+='─'.repeat(65)+'\n\n';
+  const halls=HALLS.filter(h=>selH.has(h.name));
+  if(!halls.length||!Object.keys(dist).length){t+='لم يتم التوزيع بعد.';}
+  else{
+    let tot=0;
+    halls.forEach((h,i)=>{
+      const d=dist[h.name]||{sup:null,monitors:[]};
+      t+='القاعة '+(i+1)+': '+h.name+(h.is_extra?' [إضافية]':'')+'\n';
+      t+='─'.repeat(44)+'\n';
+      t+='مشرف القاعة : '+(d.sup?`${d.sup.name}  |  ${d.sup.mtype}  |  ${TL[d.sup.title_code]}  |  ${d.sup.pos}`:'غير محدد')+'\n';
+      d.monitors.forEach((m,j)=>{t+='مراقب '+(j+1)+'       : '+(m?`${m.name}  |  ${m.mtype}  |  ${TL[m.title_code]}  |  ${m.gender==='male'?'ذكر':'أنثى'}`:'غير محدد')+'\n';});
+      if(d.sup)tot++;tot+=d.monitors.filter(Boolean).length;
+      t+='\n';
+    });
+    t+='═'.repeat(65)+'\n';
+    t+='إجمالي القاعات: '+halls.length+'  |  الموزَّعون: '+tot+'\n\n';
+    // Remaining
+    const assigned=new Set();
+    Object.values(dist).forEach(d=>{if(d.sup)assigned.add(d.sup.id);d.monitors.forEach(m=>{if(m)assigned.add(m.id);});});
+    const excm=document.getElementById('excm').checked;
+    const remain=STAFF.filter(s=>{
+      if(excm&&s.in_committee)return false;
+      if(!s.days.includes(day))return false;
+      return!assigned.has(s.id);
+    });
+    if(remain.length){
+      t+='═'.repeat(65)+'\n';
+      t+='قائمة المراقبين غير الموزَّعين ('+remain.length+' شخص)\n';
+      t+='─'.repeat(44)+'\n';
+      remain.forEach((s,i)=>{t+=(i+1)+'. '+s.name+'  |  '+s.mtype+'  |  '+TL[s.title_code]+(s.is_reserve?'  [احتياط]':'')+'\n';});
+    }
+  }
+  document.getElementById('epre').textContent=t;
+}
+function DL(){GE();const b=new Blob([document.getElementById('epre').textContent],{type:'text/plain;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='توزيع_المراقبين_'+(document.getElementById('eday').value)+'.txt';a.click();}
+function CP(){GE();navigator.clipboard.writeText(document.getElementById('epre').textContent).then(()=>alert('تم النسخ!'));}
+</script>
+</body>
+</html>

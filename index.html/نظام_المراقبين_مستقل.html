@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>نظام توزيع مراقبي الامتحانات — جامعة الفارابي 2025/2026</title>
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#eef0f7;color:#1a1a2e;direction:rtl;font-size:14px}
+.hdr{background:linear-gradient(135deg,#0d1b6e,#1e40af);color:#fff;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.hdr-left{display:flex;align-items:center;gap:14px}
+.hdr-logo{height:54px;width:54px;border-radius:50%;object-fit:contain;background:#fff;padding:3px;flex-shrink:0}
+.hdr-ph{height:54px;width:54px;border-radius:50%;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.4);display:none;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.hdr h1{font-size:16px;font-weight:800;line-height:1.35}
+.hdr h1 span{font-size:11px;font-weight:400;opacity:.8;display:block;margin-top:1px}
+.hdr-right{text-align:left;font-size:11px;opacity:.85;line-height:1.7}
+/* load panel */
+.load-panel{background:#fff;border-bottom:2px solid #c7d2fe;padding:10px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.fload{display:flex;align-items:center;gap:7px}
+.fload label{font-size:12px;font-weight:700;color:#1e3a8a;white-space:nowrap}
+.fload input[type=file]{display:none}
+.pick{padding:5px 12px;background:#e0e7ff;color:#1e3a8a;border:1px solid #a5b4fc;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;transition:background .15s}
+.pick:hover{background:#c7d2fe}
+.ok{color:#16a34a;font-size:12px;font-weight:700}
+.no{color:#dc2626;font-size:12px;font-weight:700}
+/* tabs */
+.tabs{display:flex;background:#fff;border-bottom:2px solid #dde1f0;padding:0 18px;overflow-x:auto}
+.tab{padding:10px 15px;font-size:12px;cursor:pointer;border-bottom:3px solid transparent;color:#666;font-weight:700;white-space:nowrap;flex-shrink:0;transition:all .15s}
+.tab.on{color:#0d1b6e;border-bottom-color:#0d1b6e}
+.tab:hover:not(.on){color:#1e40af;border-bottom-color:#a5b4fc}
+.tab-badge{display:inline-block;background:#ef4444;color:#fff;border-radius:20px;font-size:9px;padding:1px 6px;margin-right:4px;font-weight:800}
+/* layout */
+.wrap{padding:13px 15px;max-width:1400px;margin:0 auto}
+.panel{display:none}.panel.on{display:block}
+.card{background:#fff;border-radius:10px;padding:13px 15px;margin-bottom:11px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.ct{font-size:11px;font-weight:700;color:#555;letter-spacing:.05em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+/* controls */
+label{font-size:12px;color:#444;display:block;margin-bottom:3px;font-weight:600}
+select,input[type=text],input[type=number],input[type=date]{width:100%;padding:7px 10px;font-size:13px;border:1px solid #c8cfe8;border-radius:6px;background:#fff;color:#222;font-family:inherit}
+select:focus,input:focus{outline:none;border-color:#1e40af;box-shadow:0 0 0 2px rgba(30,64,175,.12)}
+/* buttons */
+.btn{padding:7px 13px;font-size:12px;border-radius:7px;border:1px solid #c8cfe8;background:#fff;color:#333;cursor:pointer;font-family:inherit;font-weight:700;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.btn:hover{background:#f0f2ff}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.bp{background:#0d1b6e;color:#fff;border-color:#0d1b6e}.bp:hover:not(:disabled){background:#1e40af}
+.bg{background:#14532d;color:#fff;border-color:#14532d}.bg:hover{background:#166534}
+.bsave{background:#0891b2;color:#fff;border-color:#0891b2}.bsave:hover{background:#0e7490}
+.br{background:#7f1d1d;color:#fff;border-color:#7f1d1d}.br:hover{background:#991b1b}
+.bo{background:#92400e;color:#fff;border-color:#92400e}.bo:hover{background:#b45309}
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px}
+.sb{background:#fff;border-radius:8px;padding:9px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.sn{font-size:20px;font-weight:800;color:#0d1b6e}.sl{font-size:10px;color:#888;margin-top:2px}
+.sb.res-b .sn{color:#92400e}
+/* hall grid */
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:6px}
+.hchk{display:flex;align-items:center;gap:5px;padding:5px 8px;border:1px solid #dde;border-radius:7px;cursor:pointer;font-size:12px;transition:background .12s}
+.hchk.sel{background:#e0e7ff;border-color:#1e40af}
+.hchk input{width:auto;cursor:pointer;accent-color:#0d1b6e}
+.hb{font-weight:700}.hc{color:#999;font-size:10px}
+/* result blocks */
+.hall-block{background:#fff;border:1px solid #dde1f0;border-radius:9px;margin-bottom:8px;overflow:hidden}
+.hall-hdr{background:#f0f2ff;padding:8px 13px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #dde1f0}
+.hall-title{font-weight:700;font-size:13px;color:#0d1b6e}
+.hall-meta{font-size:11px;color:#888}
+.hall-body{padding:6px 13px}
+.arow{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dashed #eef}
+.arow:last-child{border-bottom:none}
+.rtag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.rs{background:#dcfce7;color:#14532d}.rm{background:#dbeafe;color:#1e3a8a}.rres{background:#ffedd5;color:#92400e}
+/* reserve */
+.res-sect{background:#fff;border:2px solid #fed7aa;border-radius:10px;margin-bottom:9px;overflow:hidden}
+.res-hdr{background:#fff7ed;padding:8px 13px;border-bottom:1px solid #fed7aa;display:flex;justify-content:space-between;align-items:center}
+.res-title{font-weight:800;font-size:13px;color:#92400e}
+/* history badge */
+.hbadge{display:inline-flex;align-items:center;gap:3px;background:#fef3c7;color:#92400e;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid #fcd34d;transition:background .12s;vertical-align:middle;margin-right:3px}
+.hbadge:hover{background:#fde68a}
+.hbadge.zero{background:#f1f5f9;color:#94a3b8;border-color:#e2e8f0;cursor:default}
+/* history popup */
+.hist-popup{position:fixed;z-index:900;background:#fff;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.18);padding:14px 16px;min-width:300px;max-width:420px;max-height:70vh;overflow-y:auto;border:1px solid #e0e7ff;display:none}
+.hist-popup h4{font-size:13px;color:#0d1b6e;margin-bottom:9px;padding-bottom:6px;border-bottom:1px solid #eee}
+.hist-popup table{font-size:11px}
+.hist-popup th{background:#f0f2ff;padding:5px 7px}
+.hist-popup td{padding:4px 7px}
+#popup-overlay{display:none;position:fixed;inset:0;z-index:899}
+/* tables */
+.fbar{display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.fbar input,.fbar select{width:auto;min-width:130px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#eef0ff;padding:7px 8px;text-align:right;font-weight:700;border:1px solid #dde1f0}
+td{padding:5px 8px;border:1px solid #eee;vertical-align:middle}
+tr:nth-child(even) td{background:#f8f9ff}
+tr:hover td{background:#eef2ff}
+/* badges */
+.bx{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700;white-space:nowrap}
+.bm{background:#dcfce7;color:#14532d}.bh{background:#fef9c3;color:#713f12}
+.ba{background:#dbeafe;color:#1e3a8a}.bfl{background:#fce7f3;color:#831843}
+/* alerts */
+.alert{padding:9px 13px;border-radius:7px;font-size:12px;margin-bottom:10px;display:flex;align-items:center;gap:7px;border-width:1px;border-style:solid}
+.aok{background:#f0fdf4;color:#166534;border-color:#86efac}
+.awk{background:#fffbeb;color:#92400e;border-color:#fcd34d}
+.ain{background:#eff6ff;color:#1e40af;border-color:#93c5fd}
+.aer{background:#fff1f2;color:#9f1239;border-color:#fca5a5}
+/* records tab */
+.rec-card{background:#fff;border:1px solid #dde1f0;border-radius:9px;margin-bottom:9px;overflow:hidden;transition:box-shadow .15s}
+.rec-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.1)}
+.rec-hdr{padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid #f0f0f0}
+.rec-day{font-weight:800;font-size:14px;color:#0d1b6e;min-width:60px}
+.rec-date{font-size:12px;color:#555;font-weight:600}
+.rec-session{font-size:11px;background:#e0f2fe;color:#0c4a6e;border-radius:20px;padding:2px 9px;font-weight:700}
+.rec-stats{display:flex;gap:8px;flex-wrap:wrap;margin-right:auto}
+.rec-stat{font-size:11px;color:#555;background:#f8f9ff;border-radius:20px;padding:2px 9px;border:1px solid #e0e7ff}
+.rec-actions{display:flex;gap:6px}
+.rec-body{padding:10px 14px;display:none;border-top:1px solid #f0f0f0;background:#fafbff}
+.rec-body.open{display:block}
+.rec-hall-line{padding:4px 0;font-size:12px;border-bottom:1px dashed #eee}
+.rec-hall-line:last-child{border-bottom:none}
+.rec-hall-name{font-weight:700;color:#0d1b6e;margin-left:8px}
+/* empty state */
+.empty-state{text-align:center;padding:40px 20px;color:#94a3b8}
+.empty-state .ei{font-size:42px;margin-bottom:10px}
+.empty-state p{font-size:13px}
+/* responsive */
+@media(max-width:800px){
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .g3{grid-template-columns:1fr}
+  .hgrid{grid-template-columns:repeat(auto-fill,minmax(76px,1fr))}
+}
+/* ─── AUTH ─── */
+.login-ov{position:fixed;inset:0;background:linear-gradient(160deg,#050d40 0%,#0d1b6e 50%,#1a3a8f 100%);z-index:9999;display:flex;align-items:center;justify-content:center}
+.login-box{background:#fff;border-radius:18px;padding:38px 42px;width:400px;max-width:92vw;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.4)}
+.login-logo-wrap{width:90px;height:90px;border-radius:50%;background:#eef0f7;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:40px;overflow:hidden;border:3px solid #e0e7ff}
+.login-logo-wrap img{width:100%;height:100%;object-fit:contain;border-radius:50%}
+.login-uni{font-size:18px;font-weight:900;color:#0d1b6e;margin-bottom:3px}
+.login-sub{font-size:11px;color:#94a3b8;margin-bottom:24px}
+.login-sep{height:1px;background:#e0e7ff;margin:0 0 20px}
+.login-lbl{font-size:12px;font-weight:700;color:#444;display:block;text-align:right;margin-bottom:4px}
+.login-inp{width:100%;padding:11px 14px;font-size:14px;border:2px solid #e0e7ff;border-radius:9px;margin-bottom:13px;font-family:inherit;transition:border .15s;direction:rtl;background:#f8faff}
+.login-inp:focus{outline:none;border-color:#1e40af;background:#fff}
+.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,#0d1b6e,#1e40af);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-top:4px}
+.login-btn:hover{opacity:.88}
+.login-err{color:#dc2626;font-size:12px;margin-top:10px;min-height:18px;font-weight:600}
+.login-footer{font-size:10px;color:#c0cbe0;margin-top:18px}
+/* locked banner */
+.locked-bar{display:none;background:#7f1d1d;color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:700;letter-spacing:.04em}
+/* auth modal */
+.auth-modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8000;align-items:center;justify-content:center}
+.auth-modal-ov.show{display:flex}
+.auth-modal{background:#fff;border-radius:14px;padding:26px 30px;width:380px;max-width:92vw;box-shadow:0 10px 40px rgba(0,0,0,.22)}
+.auth-modal h3{font-size:15px;font-weight:800;color:#0d1b6e;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #eee}
+.auth-field-lbl{font-size:12px;font-weight:700;color:#444;display:block;margin-bottom:4px}
+.auth-field{width:100%;padding:9px 12px;font-size:13px;border:1.5px solid #c8cfe8;border-radius:7px;margin-bottom:12px;font-family:inherit;direction:rtl}
+.auth-field:focus{outline:none;border-color:#1e40af}
+.auth-msg{font-size:12px;min-height:18px;margin-bottom:8px;font-weight:600}
+.auth-msg.ok{color:#16a34a}.auth-msg.er{color:#dc2626}
+/* lock indicator in header */
+.lock-indicator{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lock-user{font-size:11px;opacity:.85;background:rgba(255,255,255,.15);padding:3px 10px;border-radius:20px}
+.hdr-btn{padding:5px 12px;border:1px solid rgba(255,255,255,.4);border-radius:7px;background:transparent;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;white-space:nowrap}
+.hdr-btn:hover{background:rgba(255,255,255,.15)}
+.hdr-btn.lock{background:rgba(239,68,68,.3);border-color:rgba(239,68,68,.6)}
+.hdr-btn.lock:hover{background:rgba(239,68,68,.5)}
+/* admin panel */
+.role-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700}
+.role-admin{background:#dbeafe;color:#1e3a8a}
+.role-user{background:#dcfce7;color:#14532d}
+.status-active{color:#16a34a;font-weight:700;font-size:12px}
+.status-inactive{color:#dc2626;font-weight:700;font-size:12px}
+.act-row td{font-size:11px}
+.act-time{color:#94a3b8;white-space:nowrap;font-size:10px}
+.act-action{font-weight:600;color:#1e40af}
+.admin-section{background:#fff;border-radius:10px;padding:13px 15px;margin-bottom:11px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN OVERLAY ══ -->
+<div class="login-ov" id="login-ov">
+  <div class="login-box">
+    <div class="login-logo-wrap" id="login-logo-wrap">
+      <img id="login-logo-img" src="" style="display:none">
+      <span id="login-logo-ph">🎓</span>
+    </div>
+    <div class="login-uni">جامعة الفارابي</div>
+    <div class="login-sub">لجنة الامتحانات | نظام توزيع المراقبين</div>
+    <div class="login-sep"></div>
+    <label class="login-lbl">اسم المستخدم</label>
+    <input class="login-inp" id="li-user" type="text" placeholder="أدخل اسم المستخدم" autocomplete="username">
+    <label class="login-lbl">كلمة المرور</label>
+    <input class="login-inp" id="li-pass" type="password" placeholder="أدخل كلمة المرور" autocomplete="current-password"
+           onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">دخول</button>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-footer">جامعة الفارابي — لجنة الامتحانات 2025-2026</div>
+  </div>
+</div>
+
+<!-- ══ LOCKED BANNER ══ -->
+<div class="locked-bar" id="locked-bar">🔒 المنصة مقفلة — لا يمكن الوصول إليها حالياً</div>
+
+<!-- ══ CHANGE PASSWORD MODAL ══ -->
+<div class="auth-modal-ov" id="pw-modal">
+  <div class="auth-modal">
+    <h3>🔑 تغيير بيانات الدخول</h3>
+    <label class="auth-field-lbl">اسم المستخدم الجديد</label>
+    <input class="auth-field" id="pw-new-user" type="text" placeholder="اتركه فارغاً للإبقاء على الحالي">
+    <label class="auth-field-lbl">كلمة المرور الحالية</label>
+    <input class="auth-field" id="pw-old" type="password" placeholder="كلمة المرور الحالية"
+           onkeydown="if(event.key==='Enter')doChangePw()">
+    <label class="auth-field-lbl">كلمة المرور الجديدة</label>
+    <input class="auth-field" id="pw-new" type="password" placeholder="كلمة المرور الجديدة"
+           onkeydown="if(event.key==='Enter')doChangePw()">
+    <label class="auth-field-lbl">تأكيد كلمة المرور الجديدة</label>
+    <input class="auth-field" id="pw-new2" type="password" placeholder="أعد كتابة كلمة المرور"
+           onkeydown="if(event.key==='Enter')doChangePw()">
+    <div class="auth-msg" id="pw-msg"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="closePwModal()">إلغاء</button>
+      <button class="btn bp" onclick="doChangePw()">حفظ التغييرات</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HEADER ══ -->
+<div class="hdr">
+  <div class="hdr-left">
+    <div style="position:relative;flex-shrink:0" title="اضغط لتحميل شعار الجامعة">
+      <img src="" class="hdr-logo" id="uni-logo" style="display:none"
+           onclick="document.getElementById('f-logo').click()" style="cursor:pointer">
+      <div class="hdr-ph" id="logo-ph" style="display:flex;cursor:pointer"
+           onclick="document.getElementById('f-logo').click()">🎓</div>
+      <input type="file" id="f-logo" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+      <div style="position:absolute;bottom:-2px;left:-2px;background:#f59e0b;border-radius:50%;
+                  width:16px;height:16px;display:flex;align-items:center;justify-content:center;
+                  font-size:9px;cursor:pointer" onclick="document.getElementById('f-logo').click()">✏</div>
+    </div>
+    <div>
+      <h1>جامعة الفارابي
+        <span>لجنة الامتحانات | نظام توزيع المراقبين | 2025-2026</span>
+      </h1>
+    </div>
+  </div>
+  <div class="lock-indicator">
+    <div class="hdr-right" id="hdr-counts">—</div>
+    <span class="lock-user" id="hdr-user">—</span>
+    <button class="hdr-btn" onclick="openPwModal()" title="تغيير بيانات الدخول">🔑 تغيير كلمة المرور</button>
+    <button class="hdr-btn lock" onclick="doLock()" title="تسجيل خروج">🚪 خروج</button>
+  </div>
+</div>
+
+<!-- FILE LOADING -->
+<div class="load-panel">
+  <div class="fload">
+    <label>📋 ملف التدريسيين:</label>
+    <button class="pick" onclick="document.getElementById('f-staff').click()">اختر الملف</button>
+    <input type="file" id="f-staff" accept=".xlsx,.xls" onchange="loadStaffFile(this)">
+    <span id="st-staff" class="no">لم يُحمَّل</span>
+  </div>
+  <div style="width:1px;background:#e0e7ff;height:24px"></div>
+  <div class="fload">
+    <label>🏛 ملف القاعات:</label>
+    <button class="pick" onclick="document.getElementById('f-halls').click()">اختر الملف</button>
+    <input type="file" id="f-halls" accept=".xlsx,.xls" onchange="loadHallsFile(this)">
+    <span id="st-halls" class="no">لم يُحمَّل</span>
+  </div>
+  <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
+    <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#92400e;cursor:pointer">
+      احتياط:
+      <input type="number" id="reserve-count" value="30" min="1" max="200"
+             style="width:58px;font-size:13px;padding:4px 7px;border:1px solid #fed7aa;border-radius:6px">
+    </label>
+    <button class="btn bp" onclick="onBothLoaded()" id="btn-init" disabled>✔ تهيئة النظام</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab on"  onclick="showTab(this,'dist')">📊 التوزيع</div>
+  <div class="tab"     onclick="showTab(this,'staff')">👥 التدريسيون</div>
+  <div class="tab"     onclick="showTab(this,'halls')">🏛 القاعات</div>
+  <div class="tab"     onclick="showTab(this,'records')" id="tab-btn-records">
+    📁 السجلات <span class="tab-badge" id="rec-count-badge" style="display:none">0</span>
+  </div>
+  <div class="tab" id="tab-btn-admin" style="display:none" onclick="showTab(this,'admin')">👑 الإدارة</div>
+</div>
+
+<!-- ══════════════════ DISTRIBUTION PANEL ══════════════════ -->
+<div class="panel on wrap" id="tab-dist">
+  <div id="no-data-msg" class="alert ain">
+    ⬆ الرجاء تحميل ملفَي Excel أعلاه ثم الضغط على <strong>تهيئة النظام</strong>
+  </div>
+  <div id="dist-content" style="display:none">
+    <!-- Stats -->
+    <div class="stats">
+      <div class="sb"><div class="sn" id="s-total">0</div><div class="sl">إجمالي التدريسيين</div></div>
+      <div class="sb"><div class="sn" id="s-avail">0</div><div class="sl">المتاحون اليوم</div></div>
+      <div class="sb"><div class="sn" id="s-halls">0</div><div class="sl">القاعات المختارة</div></div>
+      <div class="sb"><div class="sn" id="s-assigned">0</div><div class="sl">المُوزَّعون</div></div>
+      <div class="sb res-b"><div class="sn" id="s-reserve">0</div><div class="sl">الاحتياط</div></div>
+      <div class="sb"><div class="sn" id="s-remain">0</div><div class="sl">غير الموزَّعين</div></div>
+    </div>
+    <!-- Settings -->
+    <div class="card">
+      <div class="ct">⚙ إعدادات التوزيع</div>
+      <div class="g3">
+        <div>
+          <label>اليوم</label>
+          <select id="sel-day" onchange="updateAvailCount()">
+            <option>السبت</option><option>الاحد</option><option>الاثنين</option>
+            <option>الثلاثاء</option><option>الاربعاء</option><option>الخميس</option>
+          </select>
+        </div>
+        <div><label>التاريخ</label><input type="date" id="sel-date"></div>
+        <div><label>الدورة (اختياري)</label><input type="text" id="sel-session" placeholder="مثال: الصباحية"></div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+          <input type="checkbox" id="chk-excl-comm" checked style="width:auto;accent-color:#0d1b6e">
+          استثناء أعضاء اللجنة الامتحانية
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+          <input type="checkbox" id="chk-excl-res" style="width:auto;accent-color:#0d1b6e">
+          استثناء الاحتياط من التوزيع الرئيسي
+        </label>
+      </div>
+    </div>
+    <!-- Hall selection -->
+    <div class="card">
+      <div class="ct">
+        <span>🏛 اختيار القاعات</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn" style="font-size:11px;padding:3px 9px" onclick="selAllHalls(true)">الكل</button>
+          <button class="btn" style="font-size:11px;padding:3px 9px" onclick="selAllHalls(false)">لا شيء</button>
+        </div>
+      </div>
+      <div class="hgrid" id="hall-grid"></div>
+    </div>
+    <!-- Action buttons -->
+    <div style="text-align:center;margin-bottom:13px;display:flex;gap:9px;justify-content:center;flex-wrap:wrap">
+      <button class="btn bp" style="font-size:14px;padding:10px 28px" onclick="runDistribution()">▶ تشغيل التوزيع</button>
+      <button class="btn bg"    id="btn-export" style="display:none;padding:10px 20px" onclick="exportWord()">📄 تصدير Word</button>
+      <button class="btn bsave" id="btn-save"   style="display:none;padding:10px 20px" onclick="saveCurrentRecord()">💾 حفظ في السجلات</button>
+    </div>
+    <div id="save-msg" style="text-align:center;margin-bottom:8px"></div>
+    <!-- Results -->
+    <div id="results-area"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ STAFF PANEL ══════════════════ -->
+<div class="panel wrap" id="tab-staff">
+  <div class="card">
+    <div class="ct">👥 قائمة التدريسيين</div>
+    <div class="fbar">
+      <input type="text" id="staff-search" placeholder="🔍 بحث بالاسم أو القسم..." oninput="renderStaffTable()" style="min-width:190px">
+      <select id="staff-filt-dept" onchange="renderStaffTable()"><option value="">كل الأقسام</option></select>
+      <select id="staff-filt-type" onchange="renderStaffTable()">
+        <option value="">كل الأنواع</option><option value="ملاك">ملاك</option><option value="محاضر">محاضر</option>
+      </select>
+      <select id="staff-filt-gender" onchange="renderStaffTable()">
+        <option value="">الجنسان</option><option value="male">ذكر</option><option value="female">أنثى</option>
+      </select>
+      <select id="staff-sort" onchange="renderStaffTable()">
+        <option value="name">ترتيب: الاسم</option>
+        <option value="count_desc">الأكثر مراقبةً أولاً</option>
+        <option value="count_asc">الأقل مراقبةً أولاً</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>الاسم</th><th>الكلية</th><th>القسم</th><th>اللقب</th><th>النوع</th><th>الجنس</th>
+            <th>أيام الدوام</th><th>لجنة؟</th>
+            <th style="background:#fef3c7;color:#92400e">مرات المراقبة</th>
+            <th style="background:#fef3c7;color:#92400e">آخر مراقبة</th>
+            <th>الهاتف</th>
+          </tr>
+        </thead>
+        <tbody id="staff-tbody"></tbody>
+      </table>
+    </div>
+    <div id="staff-count" style="margin-top:6px;font-size:11px;color:#888"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ HALLS PANEL ══════════════════ -->
+<div class="panel wrap" id="tab-halls">
+  <div class="card">
+    <div class="ct">🏛 قائمة القاعات</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>#</th><th>اسم القاعة</th><th>عدد المراقبين المطلوب</th></tr></thead>
+        <tbody id="halls-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ RECORDS PANEL ══════════════════ -->
+<div class="panel wrap" id="tab-records">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <h2 style="color:#0d1b6e;font-size:15px">📁 السجلات المحفوظة</h2>
+    <div style="display:flex;gap:7px">
+      <button class="btn br" onclick="clearAllRecords()" style="font-size:12px">🗑 مسح الكل</button>
+    </div>
+  </div>
+  <div id="records-list"></div>
+</div>
+
+<!-- ══════════════════ ADMIN PANEL ══════════════════ -->
+<div class="panel wrap" id="tab-admin">
+  <!-- User Management -->
+  <div class="admin-section">
+    <div class="ct">
+      <span>👥 إدارة المستخدمين</span>
+      <button class="btn bp" style="font-size:11px;padding:4px 12px" onclick="openAddUserModal()">+ إضافة مستخدم</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>#</th><th>اسم المستخدم</th><th>الدور</th><th>الحالة</th><th>تاريخ الإنشاء</th><th>الإجراءات</th></tr>
+        </thead>
+        <tbody id="users-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Platform Control -->
+  <div class="admin-section">
+    <div class="ct">⚙ التحكم في المنصة</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn br" onclick="adminLockPlatform(true)"  id="btn-plat-lock"   style="font-size:13px;padding:8px 18px">🔒 قفل المنصة لجميع المستخدمين</button>
+      <button class="btn bg" onclick="adminLockPlatform(false)" id="btn-plat-unlock" style="font-size:13px;padding:8px 18px;display:none">🔓 رفع القفل عن المنصة</button>
+    </div>
+    <div id="plat-lock-status" style="margin-top:8px;font-size:12px;color:#888"></div>
+  </div>
+  <!-- Activity Log -->
+  <div class="admin-section">
+    <div class="ct">
+      <span>📋 سجل النشاط</span>
+      <button class="btn" style="font-size:11px;padding:3px 10px" onclick="clearActivity()">مسح السجل</button>
+    </div>
+    <div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+      <table>
+        <thead><tr><th>الوقت</th><th>المستخدم</th><th>الدور</th><th>الإجراء</th><th>التفاصيل</th></tr></thead>
+        <tbody id="activity-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADD USER MODAL ══ -->
+<div class="auth-modal-ov" id="add-user-modal">
+  <div class="auth-modal">
+    <h3>➕ إضافة مستخدم جديد</h3>
+    <label class="auth-field-lbl">اسم المستخدم</label>
+    <input class="auth-field" id="au-username" type="text" placeholder="اسم المستخدم">
+    <label class="auth-field-lbl">كلمة المرور</label>
+    <input class="auth-field" id="au-pass" type="password" placeholder="كلمة المرور (4 أحرف على الأقل)">
+    <label class="auth-field-lbl">الدور</label>
+    <select class="auth-field" id="au-role" style="padding:9px 12px;font-size:13px;border:1.5px solid #c8cfe8;border-radius:7px;font-family:inherit;margin-bottom:12px">
+      <option value="user">مستخدم عادي</option>
+      <option value="admin">مسؤول (admin)</option>
+    </select>
+    <div class="auth-msg" id="au-msg"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="closeAddUserModal()">إلغاء</button>
+      <button class="btn bp" onclick="doAddUser()">إضافة</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESET PASSWORD MODAL ══ -->
+<div class="auth-modal-ov" id="reset-pw-modal">
+  <div class="auth-modal">
+    <h3>🔑 إعادة تعيين كلمة المرور</h3>
+    <input type="hidden" id="rp-uid">
+    <p style="font-size:12px;color:#555;margin-bottom:12px">إعادة تعيين كلمة مرور: <strong id="rp-username"></strong></p>
+    <label class="auth-field-lbl">كلمة المرور الجديدة</label>
+    <input class="auth-field" id="rp-pass"  type="password" placeholder="كلمة المرور الجديدة">
+    <label class="auth-field-lbl">تأكيد كلمة المرور</label>
+    <input class="auth-field" id="rp-pass2" type="password" placeholder="أعد كتابة كلمة المرور">
+    <div class="auth-msg" id="rp-msg"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="closeResetPwModal()">إلغاء</button>
+      <button class="btn bp" onclick="doResetPw()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY POPUP -->
+<div id="popup-overlay" onclick="closeHistPopup()"></div>
+<div class="hist-popup" id="hist-popup">
+  <h4 id="hp-title">سجل المراقبة</h4>
+  <div id="hp-body"></div>
+  <div style="text-align:left;margin-top:10px">
+    <button class="btn" style="font-size:11px;padding:3px 10px" onclick="closeHistPopup()">إغلاق</button>
+  </div>
+</div>
+
+<!-- ══════════════════ JAVASCRIPT ══════════════════ -->
+<script>
+// ─────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────
+const DAYS_ALL = ['السبت','الاحد','الاثنين','الثلاثاء','الاربعاء','الخميس'];
+const TITLE_LABEL = {prof:'أ.د',asst_prof:'أ.م.د',lec_dr:'م.د',dr:'د.',asst:'أ.م',mm:'م.م',other:'—'};
+const POS_RANK = {'تدريسي':3,'تدريسية':3,'مقرر قسم':2,'رئيس قسم':1,'مقرر كلية':0,'عميد':0,'معاون عميد':0};
+const FEM_NAMES = new Set([
+  'هند','ليلى','منى','هبة','مريم','سيناء','ايالف','رنا','لميس','رونق','ضحى','رغد','ياسمين',
+  'استبرق','نور','فاطمة','امل','نبأ','بان','هيفاء','ريما','شهد','نغم','رحمه','رغدة','سارة',
+  'مينا','همسة','سجى','ذكريات','تبارك','علياء','ايثار','وداد','هدى','فرح','غفران','زينب',
+  'ميسرة','روى','لبنى','ايلاف','زهراء','بنين','تقوى','اشواق','مروة','اية','شذى','الاء',
+  'نورا','هالة','ريا','الهام','ورود','انوار','هناء','سلوى','كفاء','لقاء','دينا','زينة',
+  'رند','شيماء','منال','نورالهدى','فهيمة','اتحاد','ماجدة','سرى','سحر','صفاء','ايمان',
+  'روضة','حنان','خلود','سماء','عبير','رهام','وجدان','نادية'
+]);
+const LS_RECORDS = 'fuc_exam_records_v1';
+const LS_HISTORY = 'fuc_monitor_history_v1';
+
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+let STAFF=[], HALLS=[];
+let lastDist=null, lastReserve=[], lastRemaining=[];
+let staffWb=null, hallsWb=null;
+let RECORDS = lsGet(LS_RECORDS, []);
+let HISTORY = lsGet(LS_HISTORY, {});
+
+// ─────────────────────────────────────────
+// LOCAL STORAGE HELPERS
+// ─────────────────────────────────────────
+function lsGet(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; }
+  catch(e) { return def; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
+function syncStorage() { lsSet(LS_RECORDS, RECORDS); lsSet(LS_HISTORY, HISTORY); }
+
+// ─────────────────────────────────────────
+// HISTORY HELPERS
+// ─────────────────────────────────────────
+function getHist(name) { return HISTORY[name] || {count:0, sessions:[]}; }
+
+function rebuildHistoryFromRecords() {
+  HISTORY = {};
+  for(const rec of RECORDS) applyRecordToHistory(rec);
+}
+
+function applyRecordToHistory(rec) {
+  function add(name, role, hall) {
+    if(!name) return;
+    if(!HISTORY[name]) HISTORY[name]={count:0,sessions:[]};
+    HISTORY[name].count++;
+    HISTORY[name].sessions.push({day:rec.day,date:rec.date,session:rec.session||'',hall,role,recId:rec.id});
+  }
+  for(const h of rec.halls) {
+    if(h.supervisor) add(h.supervisor,'مشرف',h.hall);
+    h.monitors.forEach((m,i)=>{ if(m) add(m,'مراقب '+(i+1),h.hall); });
+  }
+  rec.reserve.forEach(name=>add(name,'احتياط','—'));
+}
+
+// ─────────────────────────────────────────
+// DATA PROCESSING
+// ─────────────────────────────────────────
+function getTitleInfo(name) {
+  const n=(name||'').trim();
+  const checks=[
+    ['أ.د','prof',6,true],['ا.د','prof',6,true],
+    ['أ.م.د','asst_prof',5,true],['ا.م.د','asst_prof',5,true],
+    ['م.د','lec_dr',4,true],['د.','dr',4,true],
+    ['أ.م','asst',3,false],['ا.م','asst',3,false],
+    ['م.م.','mm',2,false],['م.م','mm',2,false],
+    ['م. ','mm',2,false],['م.','mm',2,false],
+  ];
+  for(const [pfx,code,rank,phd] of checks) if(n.startsWith(pfx)) return{code,rank,phd};
+  return{code:'other',rank:1,phd:false};
+}
+function guessGender(name){
+  const parts=(name||'').split(/\s+/);
+  for(const p of parts.slice(1,4)){
+    const c=p.replace(/[.ال]/g,'').trim();
+    if(FEM_NAMES.has(c)||FEM_NAMES.has(p)) return 'female';
+  }
+  return 'male';
+}
+function parseDays(val){
+  if(val==null||val===''||String(val).trim()==='nan') return [];
+  const s=String(val).trim();
+  if(s==='كامل') return[...DAYS_ALL];
+  return s.split(/[,،]/).map(d=>d.trim()).filter(Boolean);
+}
+function processStaff(ws){
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+  return rows.map((row,i)=>{
+    const name=String(row['اسم التدريسي']||'').trim();
+    const{code:tc,rank:tr,phd}=getTitleInfo(name);
+    let mtype=String(row['نوع الدوام']||'محاضر').trim(); if(!mtype||mtype==='nan') mtype='محاضر';
+    let pos=String(row['المنصب']||'تدريسي').trim(); if(!pos||pos==='nan') pos='تدريسي';
+    const days=parseDays(row['ايام الدوام الاسبوعي']);
+    const inComm=String(row['هل لجنة امتحانية؟']||'لا').trim()==='نعم';
+    const pr=POS_RANK[pos]??1, typr=mtype==='ملاك'?10:0;
+    return{id:i,name,gender:guessGender(name),college:String(row['الكلية']||'').trim(),
+      dept:String(row['القسم']||'').trim(),title_code:tc,title_rank:tr,has_phd:phd,
+      mtype,type_rank:typr,pos,pos_rank:pr,days,in_committee:inComm,
+      phone:String(row['رقم الهاتف']||'').trim(),total_rank:typr+pr+tr};
+  }).filter(s=>s.name&&s.name!=='nan');
+}
+function processHalls(ws){
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+  return rows.map(row=>({
+    name:String(row['اسم القاعة']||'').trim(),
+    monitors_needed:parseInt(row['العدد المطلوب من المراقبين'])||2,
+  })).filter(h=>h.name&&h.name!=='nan');
+}
+
+// ─────────────────────────────────────────
+// FILE LOADING
+// ─────────────────────────────────────────
+function loadStaffFile(input){
+  const file=input.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{ staffWb=XLSX.read(e.target.result,{type:'array'});
+      setStatus('st-staff','ok','✔ '+file.name); }
+    catch(e){ setStatus('st-staff','no','✗ خطأ'); }
+    checkBothLoaded();
+  };
+  r.readAsArrayBuffer(file);
+}
+function loadHallsFile(input){
+  const file=input.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{ hallsWb=XLSX.read(e.target.result,{type:'array'});
+      setStatus('st-halls','ok','✔ '+file.name); }
+    catch(e){ setStatus('st-halls','no','✗ خطأ'); }
+    checkBothLoaded();
+  };
+  r.readAsArrayBuffer(file);
+}
+function setStatus(id,cls,txt){
+  const el=document.getElementById(id); el.className=cls; el.textContent=txt;
+}
+function checkBothLoaded(){
+  document.getElementById('btn-init').disabled=!(staffWb&&hallsWb);
+}
+function onBothLoaded(){
+  try{
+    const ss=staffWb.Sheets['الملاك']||staffWb.Sheets[staffWb.SheetNames[0]];
+    STAFF=processStaff(ss);
+    const hs=hallsWb.Sheets[hallsWb.SheetNames[0]];
+    HALLS=processHalls(hs);
+    if(!STAFF.length){alert('لم يُعثر على بيانات في ملف التدريسيين');return;}
+    if(!HALLS.length){alert('لم يُعثر على بيانات في ملف القاعات');return;}
+    document.getElementById('no-data-msg').style.display='none';
+    document.getElementById('dist-content').style.display='block';
+    document.getElementById('hdr-counts').innerHTML=STAFF.length+' تدريسي | '+HALLS.length+' قاعة';
+    document.getElementById('s-total').textContent=STAFF.length;
+    buildHallGrid();
+    const depts=[...new Set(STAFF.map(s=>s.dept).filter(Boolean))].sort();
+    const sel=document.getElementById('staff-filt-dept');
+    depts.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;sel.appendChild(o);});
+    updateAvailCount();
+    renderStaffTable();
+    renderHallsTable();
+    updateRecordsBadge();
+    renderRecordsTab();
+  }catch(e){alert('خطأ: '+e.message);console.error(e);}
+}
+
+// ─────────────────────────────────────────
+// HALL GRID
+// ─────────────────────────────────────────
+function buildHallGrid(){
+  const g=document.getElementById('hall-grid'); g.innerHTML='';
+  HALLS.forEach(h=>{
+    const d=document.createElement('div');
+    d.className='hchk sel'; d.id='hc-'+h.name;
+    d.innerHTML=`<input type="checkbox" checked id="ch-${h.name}">
+      <span class="hb">${h.name}</span><span class="hc">(${h.monitors_needed})</span>`;
+    d.onclick=()=>{
+      const cb=document.getElementById('ch-'+h.name);
+      cb.checked=!cb.checked; d.classList.toggle('sel',cb.checked);
+      document.getElementById('s-halls').textContent=getSelectedHalls().length;
+    };
+    g.appendChild(d);
+  });
+  document.getElementById('s-halls').textContent=HALLS.length;
+}
+function selAllHalls(v){
+  HALLS.forEach(h=>{
+    const cb=document.getElementById('ch-'+h.name),dv=document.getElementById('hc-'+h.name);
+    if(cb){cb.checked=v;dv.classList.toggle('sel',v);}
+  });
+  document.getElementById('s-halls').textContent=getSelectedHalls().length;
+}
+function getSelectedHalls(){
+  return HALLS.filter(h=>{const cb=document.getElementById('ch-'+h.name);return cb&&cb.checked;}).map(h=>h.name);
+}
+
+// ─────────────────────────────────────────
+// DISTRIBUTION ENGINE
+// ─────────────────────────────────────────
+function getAvailable(day,ec,er){
+  return STAFF
+    .filter(s=>{ if(ec&&s.in_committee)return false; if(er&&s.is_reserve)return false; return s.days.includes(day); })
+    .sort((a,b)=>b.total_rank-a.total_rank);
+}
+function distribute(day,selected,ec,er){
+  const avail=getAvailable(day,ec,er);
+  const sups=avail.filter(s=>s.has_phd);
+  const mons=avail.filter(s=>['mm','asst'].includes(s.title_code));
+  const males=mons.filter(s=>s.gender==='male');
+  const females=mons.filter(s=>s.gender==='female');
+  const usedS=new Set(),usedM=new Set(),dist={};
+  for(const hname of selected){
+    const hall=HALLS.find(h=>h.name===hname); if(!hall) continue;
+    const needed=hall.monitors_needed;
+    const sup=sups.find(s=>!usedS.has(s.id)&&!usedM.has(s.id))||null;
+    if(sup) usedS.add(sup.id);
+    const assigns=[]; const slots=needed-1;
+    if(slots>=2){
+      const m=males.find(s=>!usedM.has(s.id)&&!usedS.has(s.id))||null;
+      const f=females.find(s=>!usedM.has(s.id)&&!usedS.has(s.id)&&s.id!==(m?m.id:-1))||null;
+      if(m){assigns.push(m);usedM.add(m.id);}
+      if(f){assigns.push(f);usedM.add(f.id);}
+      for(let i=assigns.length;i<slots;i++){
+        const nx=mons.find(s=>!usedM.has(s.id)&&!usedS.has(s.id))||null;
+        if(nx){assigns.push(nx);usedM.add(nx.id);}else assigns.push(null);
+      }
+    } else if(slots===1){
+      const nx=mons.find(s=>!usedM.has(s.id)&&!usedS.has(s.id))||null;
+      if(nx){assigns.push(nx);usedM.add(nx.id);}else assigns.push(null);
+    }
+    dist[hname]={supervisor:sup,monitors:assigns,hall};
+  }
+  return dist;
+}
+function getAllRemaining(day,dist,ec){
+  const used=new Set();
+  for(const d of Object.values(dist)){
+    if(d.supervisor) used.add(d.supervisor.id);
+    d.monitors.forEach(m=>{if(m)used.add(m.id);});
+  }
+  return STAFF.filter(s=>s.days.includes(day)&&!used.has(s.id)&&!(ec&&s.in_committee))
+              .sort((a,b)=>b.total_rank-a.total_rank);
+}
+
+// ─────────────────────────────────────────
+// RUN DISTRIBUTION
+// ─────────────────────────────────────────
+function updateAvailCount(){
+  if(!STAFF.length) return;
+  const day=document.getElementById('sel-day').value;
+  const ec=document.getElementById('chk-excl-comm').checked;
+  const er=document.getElementById('chk-excl-res').checked;
+  document.getElementById('s-avail').textContent=getAvailable(day,ec,er).length;
+}
+function runDistribution(){
+  const day=document.getElementById('sel-day').value;
+  const ec=document.getElementById('chk-excl-comm').checked;
+  const er=document.getElementById('chk-excl-res').checked;
+  const sel=getSelectedHalls();
+  if(!sel.length){ showAlert('results-area','⚠ الرجاء اختيار قاعة واحدة على الأقل','awk');return; }
+  lastDist=distribute(day,sel,ec,er);
+  const allRem=getAllRemaining(day,lastDist,ec);
+  const target=parseInt(document.getElementById('reserve-count').value)||30;
+  lastReserve=allRem.slice(0,Math.min(target,allRem.length));
+  lastRemaining=allRem.slice(lastReserve.length);
+  let assigned=0;
+  for(const d of Object.values(lastDist)){
+    if(d.supervisor)assigned++;
+    assigned+=d.monitors.filter(m=>m).length;
+  }
+  document.getElementById('s-assigned').textContent=assigned;
+  document.getElementById('s-reserve').textContent=lastReserve.length;
+  document.getElementById('s-remain').textContent=lastRemaining.length;
+  document.getElementById('s-halls').textContent=sel.length;
+  document.getElementById('btn-export').style.display='';
+  document.getElementById('btn-save').style.display='';
+  document.getElementById('save-msg').innerHTML='';
+  renderResults(lastDist,lastReserve,lastRemaining,day);
+  logActivity('تشغيل التوزيع',`اليوم: ${day} | القاعات: ${sel.length} | الموزَّعون: ${assigned} | الاحتياط: ${lastReserve.length}`);
+}
+function showAlert(id,msg,cls){
+  document.getElementById(id).innerHTML=`<div class="alert ${cls}">${msg}</div>`;
+}
+
+// ─────────────────────────────────────────
+// SAVE RECORD
+// ─────────────────────────────────────────
+function saveCurrentRecord(){
+  if(!lastDist) return;
+  const day=document.getElementById('sel-day').value;
+  const date=document.getElementById('sel-date').value||new Date().toISOString().slice(0,10);
+  const session=document.getElementById('sel-session').value;
+  let assigned=0;
+  for(const d of Object.values(lastDist)){
+    if(d.supervisor)assigned++;
+    assigned+=d.monitors.filter(m=>m).length;
+  }
+  const rec={
+    id:Date.now(), day, date, session,
+    createdAt:new Date().toISOString(),
+    halls:Object.entries(lastDist).map(([hname,d])=>({
+      hall:hname, needed:d.hall.monitors_needed,
+      supervisor:d.supervisor?d.supervisor.name:null,
+      monitors:d.monitors.map(m=>m?m.name:null)
+    })),
+    reserve:lastReserve.map(s=>s.name),
+    stats:{halls:Object.keys(lastDist).length, assigned, reserve:lastReserve.length}
+  };
+  RECORDS.unshift(rec);
+  applyRecordToHistory(rec);
+  syncStorage();
+  updateRecordsBadge();
+  renderRecordsTab();
+  renderStaffTable();
+  logActivity('حفظ سجل',`اليوم: ${day} | التاريخ: ${date} | القاعات: ${Object.keys(lastDist).length}`);
+  document.getElementById('btn-save').disabled=true;
+  document.getElementById('btn-save').textContent='✔ تم الحفظ';
+  document.getElementById('save-msg').innerHTML=
+    '<div class="alert aok" style="display:inline-flex;padding:6px 14px">✔ تم حفظ السجل بنجاح — يمكنك مراجعته في تبويب السجلات</div>';
+  setTimeout(()=>{
+    document.getElementById('btn-save').disabled=false;
+    document.getElementById('btn-save').textContent='💾 حفظ في السجلات';
+  },3000);
+}
+
+// ─────────────────────────────────────────
+// DELETE RECORD
+// ─────────────────────────────────────────
+function deleteRecord(id){
+  if(!confirm('هل تريد حذف هذا السجل نهائياً؟')) return;
+  const dr=RECORDS.find(r=>r.id===id);
+  logActivity('حذف سجل', dr?`اليوم: ${dr.day} | التاريخ: ${dr.date}`:`#${id}`);
+  RECORDS=RECORDS.filter(r=>r.id!==id);
+  rebuildHistoryFromRecords();
+  syncStorage();
+  updateRecordsBadge();
+  renderRecordsTab();
+  renderStaffTable();
+}
+function clearAllRecords(){
+  if(!RECORDS.length){ alert('لا توجد سجلات محفوظة'); return; }
+  if(!confirm('هل تريد حذف جميع السجلات المحفوظة؟\nسيتم مسح تاريخ المراقبة أيضاً.')) return;
+  logActivity('مسح جميع السجلات',`عدد السجلات المحذوفة: ${RECORDS.length}`);
+  RECORDS=[]; HISTORY={};
+  syncStorage();
+  updateRecordsBadge();
+  renderRecordsTab();
+  renderStaffTable();
+}
+function updateRecordsBadge(){
+  const badge=document.getElementById('rec-count-badge');
+  if(RECORDS.length>0){ badge.style.display=''; badge.textContent=RECORDS.length; }
+  else badge.style.display='none';
+}
+
+// ─────────────────────────────────────────
+// RENDER RESULTS
+// ─────────────────────────────────────────
+function histBadge(name){
+  const h=getHist(name);
+  if(h.count===0) return `<span class="hbadge zero" title="لا توجد مراقبات سابقة">0 مرة</span>`;
+  const last=h.sessions[h.sessions.length-1];
+  const tip=h.sessions.map(s=>`${s.day} ${s.date} | ${s.hall} (${s.role})`).join('\n');
+  return `<span class="hbadge" title="${tip}" onclick="openHistPopup('${escHtml(name)}',event)">
+    ${h.count} مرة${h.count>0?' — آخرها: '+last.day+' '+last.date:''}
+  </span>`;
+}
+function escHtml(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+
+function personLine(p){
+  if(!p) return '<span style="color:#bbb">— غير متوفر</span>';
+  const lbl=TITLE_LABEL[p.title_code]||'—';
+  const tCls=p.mtype==='ملاك'?'bm':'bh';
+  const g=p.gender==='female'?'أنثى':'ذكر';
+  return `<span class="bx ${tCls}">${p.mtype}</span>
+    <strong>${p.name}</strong>
+    <span style="color:#888;font-size:10px">(${g})</span>
+    ${histBadge(p.name)}`;
+}
+
+function renderResults(dist,reserve,remaining,day){
+  let html=`<div class="alert aok">✔ اكتمل التوزيع ليوم <strong>${day}</strong> — ${Object.keys(dist).length} قاعة &nbsp;|&nbsp; احتياط: ${reserve.length}</div>`;
+  for(const[hname,d]of Object.entries(dist)){
+    html+=`<div class="hall-block">
+      <div class="hall-hdr">
+        <span class="hall-title">🏛 ${hname}</span>
+        <span class="hall-meta">مطلوب: ${d.hall.monitors_needed}</span>
+      </div>
+      <div class="hall-body">
+        <div class="arow"><span class="rtag rs">مشرف</span><span>${personLine(d.supervisor)}</span></div>`;
+    d.monitors.forEach((m,i)=>{
+      html+=`<div class="arow"><span class="rtag rm">مراقب ${i+1}</span><span>${personLine(m)}</span></div>`;
+    });
+    html+=`</div></div>`;
+  }
+  if(reserve.length){
+    html+=`<div class="res-sect">
+      <div class="res-hdr">
+        <span class="res-title">⚡ قائمة الاحتياط (${reserve.length} شخص)</span>
+        <span style="font-size:11px;color:#b45309">جاهزون للتعويض عند الحاجة</span>
+      </div>
+      <div style="padding:8px 13px;overflow-x:auto">
+      <table>
+        <thead><tr><th>#</th><th>الاسم</th><th>القسم</th><th>النوع</th>
+          <th style="background:#fef3c7;color:#92400e">مرات المراقبة السابقة</th><th>الهاتف</th></tr></thead>
+        <tbody>`;
+    reserve.forEach((s,i)=>{
+      const lbl=TITLE_LABEL[s.title_code]||'—';
+      const tCls=s.mtype==='ملاك'?'bm':'bh';
+      html+=`<tr>
+        <td>${i+1}</td>
+        <td><strong>${s.name}</strong></td>
+        <td>${s.dept}</td>
+        <td><span class="bx ${tCls}">${s.mtype}</span></td>
+        <td>${histBadge(s.name)}</td>
+        <td>${s.phone||'—'}</td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div></div>`;
+  }
+  if(remaining.length){
+    html+=`<details style="margin-top:10px">
+      <summary style="cursor:pointer;padding:8px 12px;background:#f1f5f9;border-radius:8px;font-weight:700;font-size:12px;color:#475569">
+        📋 المتبقون غير الموزَّعين (${remaining.length} شخص) — اضغط للعرض
+      </summary>
+      <div style="overflow-x:auto;margin-top:8px">
+      <table>
+        <thead><tr><th>#</th><th>الاسم</th><th>القسم</th><th>النوع</th>
+          <th style="background:#fef3c7;color:#92400e">مرات المراقبة</th></tr></thead>
+        <tbody>`;
+    remaining.forEach((s,i)=>{
+      const lbl=TITLE_LABEL[s.title_code]||'—';
+      html+=`<tr><td>${i+1}</td><td>${s.name}</td><td>${s.dept}</td><td>${s.mtype}</td>
+        <td>${histBadge(s.name)}</td></tr>`;
+    });
+    html+=`</tbody></table></div></details>`;
+  }
+  document.getElementById('results-area').innerHTML=html;
+}
+
+// ─────────────────────────────────────────
+// HISTORY POPUP
+// ─────────────────────────────────────────
+function openHistPopup(name,event){
+  event.stopPropagation();
+  const h=getHist(name);
+  document.getElementById('hp-title').textContent='سجل مراقبة: '+name;
+  let body='';
+  if(!h.count){ body='<p style="color:#94a3b8;font-size:12px">لا توجد مراقبات سابقة مسجّلة</p>'; }
+  else {
+    body=`<p style="font-size:12px;color:#555;margin-bottom:8px">إجمالي المراقبات: <strong>${h.count}</strong></p>
+    <table>
+      <thead><tr><th>#</th><th>اليوم</th><th>التاريخ</th><th>الدورة</th><th>القاعة</th><th>الدور</th></tr></thead>
+      <tbody>`;
+    [...h.sessions].reverse().forEach((s,i)=>{
+      body+=`<tr>
+        <td>${i+1}</td><td>${s.day}</td><td>${s.date}</td>
+        <td>${s.session||'—'}</td><td>${s.hall}</td><td>${s.role}</td>
+      </tr>`;
+    });
+    body+=`</tbody></table>`;
+  }
+  document.getElementById('hp-body').innerHTML=body;
+  const pop=document.getElementById('hist-popup');
+  pop.style.display='block';
+  // Position near click
+  const x=event.clientX, y=event.clientY;
+  pop.style.top=(y+10)+'px';
+  pop.style.left=Math.min(x,window.innerWidth-440)+'px';
+  document.getElementById('popup-overlay').style.display='block';
+}
+function closeHistPopup(){
+  document.getElementById('hist-popup').style.display='none';
+  document.getElementById('popup-overlay').style.display='none';
+}
+
+// ─────────────────────────────────────────
+// RECORDS TAB
+// ─────────────────────────────────────────
+function renderRecordsTab(){
+  const el=document.getElementById('records-list');
+  if(!RECORDS.length){
+    el.innerHTML=`<div class="empty-state">
+      <div class="ei">📂</div>
+      <p>لا توجد سجلات محفوظة بعد</p>
+      <p style="margin-top:6px;font-size:11px">بعد تشغيل التوزيع اضغط "💾 حفظ في السجلات"</p>
+    </div>`;
+    return;
+  }
+  el.innerHTML=RECORDS.map(rec=>{
+    const sessionBadge=rec.session?`<span class="rec-session">${rec.session}</span>`:'';
+    const dt=rec.date?rec.date.replace(/-/g,'/'):'—';
+    return `<div class="rec-card">
+      <div class="rec-hdr">
+        <span class="rec-day">${rec.day}</span>
+        <span class="rec-date">📅 ${dt}</span>
+        ${sessionBadge}
+        <div class="rec-stats">
+          <span class="rec-stat">🏛 ${rec.stats.halls} قاعة</span>
+          <span class="rec-stat">👥 ${rec.stats.assigned} موزَّع</span>
+          <span class="rec-stat" style="background:#fff7ed;border-color:#fed7aa;color:#92400e">⚡ ${rec.stats.reserve} احتياط</span>
+        </div>
+        <div class="rec-actions">
+          <button class="btn" style="font-size:11px;padding:3px 9px" onclick="toggleRecBody(${rec.id})">عرض</button>
+          <button class="btn bg" style="font-size:11px;padding:3px 9px" onclick="exportRecordWord(${rec.id})">📄 Word</button>
+          <button class="btn br" style="font-size:11px;padding:3px 9px" onclick="deleteRecord(${rec.id})">🗑</button>
+        </div>
+      </div>
+      <div class="rec-body" id="rb-${rec.id}">
+        ${buildRecordDetail(rec)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleRecBody(id){
+  const el=document.getElementById('rb-'+id);
+  el.classList.toggle('open');
+}
+
+function buildRecordDetail(rec){
+  let html=`<div style="overflow-x:auto"><table>
+    <thead><tr>
+      <th>القاعة</th><th>الدور</th><th>الاسم</th>
+      <th style="background:#fef3c7;color:#92400e">مرات المراقبة الكلية</th>
+    </tr></thead><tbody>`;
+  for(const h of rec.halls){
+    const tot=1+h.monitors.length;
+    const supH=getHist(h.supervisor||'');
+    html+=`<tr>
+      <td rowspan="${tot}" style="font-weight:700;color:#0d1b6e;text-align:center;background:#f0f2ff">${h.hall}</td>
+      <td>مشرف</td>
+      <td>${h.supervisor||'—'}</td>
+      <td>${h.supervisor?supH.count+' مرة':'—'}</td>
+    </tr>`;
+    h.monitors.forEach((m,i)=>{
+      const mH=getHist(m||'');
+      html+=`<tr>
+        <td>مراقب ${i+1}</td>
+        <td>${m||'—'}</td>
+        <td>${m?mH.count+' مرة':'—'}</td>
+      </tr>`;
+    });
+  }
+  html+=`</tbody></table></div>`;
+  if(rec.reserve.length){
+    html+=`<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:#92400e;padding:5px">
+      الاحتياط (${rec.reserve.length} شخص)</summary>
+      <div style="overflow-x:auto;margin-top:5px"><table>
+        <thead><tr><th>#</th><th>الاسم</th><th>مرات المراقبة الكلية</th></tr></thead><tbody>`;
+    rec.reserve.forEach((n,i)=>{
+      const rh=getHist(n);
+      html+=`<tr><td>${i+1}</td><td>${n}</td><td>${rh.count} مرة</td></tr>`;
+    });
+    html+=`</tbody></table></div></details>`;
+  }
+  const cr=new Date(rec.createdAt).toLocaleString('ar-IQ');
+  html+=`<p style="font-size:10px;color:#94a3b8;margin-top:8px">تم الحفظ: ${cr}</p>`;
+  return html;
+}
+
+// ─────────────────────────────────────────
+// WORD EXPORT (current distribution)
+// ─────────────────────────────────────────
+function exportWord(){
+  if(!lastDist) return;
+  const day=document.getElementById('sel-day').value;
+  const rawDate=document.getElementById('sel-date').value;
+  const date=rawDate||new Date().toLocaleDateString('ar-IQ');
+  const session=document.getElementById('sel-session').value;
+  logActivity('تصدير Word',`اليوم: ${day} | التاريخ: ${date}`);
+  generateWordDoc(lastDist,lastReserve,day,date,session,rawDate);
+}
+
+function exportRecordWord(id){
+  const rec=RECORDS.find(r=>r.id===id); if(!rec) return;
+  // Reconstruct dist-like structure from record
+  const dist={};
+  for(const h of rec.halls){
+    dist[h.hall]={
+      supervisor:h.supervisor?{name:h.supervisor,title_code:'other',mtype:'',gender:'male'}:null,
+      monitors:h.monitors.map(m=>m?{name:m,title_code:'other',mtype:'',gender:'male'}:null),
+      hall:{name:h.hall,monitors_needed:h.needed}
+    };
+    // Try to match real staff for better data
+    if(h.supervisor){
+      const rs=STAFF.find(s=>s.name===h.supervisor);
+      if(rs) dist[h.hall].supervisor=rs;
+    }
+    dist[h.hall].monitors=h.monitors.map(m=>{
+      if(!m) return null;
+      return STAFF.find(s=>s.name===m)||{name:m,title_code:'other',mtype:'',gender:'male'};
+    });
+  }
+  const reserve=rec.reserve.map(n=>STAFF.find(s=>s.name===n)||{name:n,title_code:'other',mtype:'',gender:'male'});
+  const date=rec.date?rec.date.replace(/-/g,'/'):'';
+  generateWordDoc(dist,reserve,rec.day,date,rec.session||'',rec.date||'');
+}
+
+function generateWordDoc(dist,reserve,day,date,session,rawDate){
+  let distRows='';
+  let ri=0;
+  for(const[hname,d]of Object.entries(dist)){
+    const tot=1+d.monitors.length;
+    const bg=ri%2===0?'#EEF2FF':'#FFFFFF';
+    const sup=d.supervisor;
+    const supName=sup?sup.name:'—';
+    distRows+=`<tr>
+      <td rowspan="${tot}" style="text-align:center;font-weight:800;font-size:11pt;
+        background:#dbeafe;border:1pt solid #6b7280;vertical-align:middle;padding:5pt">${hname}</td>
+      <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt 7pt">مشرف القاعة</td>
+      <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt 7pt">${supName}</td>
+      <td style="border:1pt solid #9ca3af;min-width:90pt;background:#fafafa;padding:5pt"></td>
+    </tr>`;
+    d.monitors.forEach((m,i)=>{
+      const bg2=ri%2===0?'#EEF2FF':'#FFFFFF';
+      const mName=m?m.name:'—';
+      distRows+=`<tr>
+        <td style="background:${bg2};border:1pt solid #9ca3af;padding:5pt 7pt">مراقب ${i+1}</td>
+        <td style="background:${bg2};border:1pt solid #9ca3af;padding:5pt 7pt">${mName}</td>
+        <td style="border:1pt solid #9ca3af;min-width:90pt;background:#fafafa;padding:5pt"></td>
+      </tr>`;
+    });
+    ri++;
+  }
+  let resRows='';
+  reserve.forEach((s,i)=>{
+    const bg=i%2===0?'#FFF7ED':'#FFFFFF';
+    const lbl=TITLE_LABEL[s.title_code]||'';
+    resRows+=`<tr>
+      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;text-align:center">${i+1}</td>
+      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt">${s.name}</td>
+      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt">${s.dept||''}</td>
+      <td style="border:1pt solid #d1d5db;min-width:90pt;background:#fafafa;padding:5pt"></td>
+    </tr>`;
+  });
+  const now=new Date().toLocaleString('ar-IQ');
+  const sesLine=session?`&nbsp;&nbsp;&nbsp;&nbsp;الدورة: <strong>${session}</strong>`:'';
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:w="urn:schemas-microsoft-com:office:word"
+ xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><title>جدول توزيع المراقبين</title>
+<style>
+  body{font-family:Arial,'Traditional Arabic';direction:rtl;margin:2cm;font-size:11pt}
+  h1{text-align:center;font-size:16pt;color:#0d1b6e;margin-bottom:3pt}
+  .uni{text-align:center;font-size:14pt;color:#1e3a8a;font-weight:bold;margin-bottom:2pt}
+  .info{text-align:center;font-size:11pt;color:#374151;margin:10pt 0;padding:5pt 0;border-top:1pt solid #e5e7eb;border-bottom:1pt solid #e5e7eb}
+  table{border-collapse:collapse;width:100%;margin-bottom:16pt}
+  th{background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151}
+  h2{font-size:13pt;color:#92400e;margin:14pt 0 6pt;border-right:4pt solid #f59e0b;padding-right:7pt}
+  .footer{text-align:center;font-size:8pt;color:#9ca3af;margin-top:16pt;border-top:1pt solid #e5e7eb;padding-top:5pt}
+</style></head>
+<body>
+<div class="uni">جـامـعـة الـفـارابـي</div>
+<h1>جدول توزيع مراقبي الامتحانات النهائية</h1>
+<div class="info">
+  اليوم: <strong>${day}</strong> &nbsp;&nbsp;&nbsp;&nbsp; التاريخ: <strong>${date}</strong> ${sesLine}
+</div>
+<table>
+  <thead><tr>
+    <th style="width:11%;text-align:center">القاعة</th>
+    <th style="width:19%">الدور</th>
+    <th style="width:42%">الاسم</th>
+    <th style="width:28%;text-align:center">التوقيع</th>
+  </tr></thead>
+  <tbody>${distRows}</tbody>
+</table>
+${reserve.length?`<h2>قائمة الاحتياط (${reserve.length} شخص)</h2>
+<table>
+  <thead><tr>
+    <th style="width:7%;text-align:center">#</th>
+    <th style="width:40%">الاسم</th>
+    <th style="width:25%">القسم</th>
+    <th style="width:28%;text-align:center">التوقيع</th>
+  </tr></thead>
+  <tbody>${resRows}</tbody>
+</table>`:''}
+<div class="footer">
+  تم الإنشاء: ${now} &nbsp;|&nbsp; القاعات: ${Object.keys(dist).length}
+  &nbsp;|&nbsp; الاحتياط: ${reserve.length} &nbsp;|&nbsp; جامعة الفارابي — لجنة الامتحانات
+</div></body></html>`;
+  const blob=new Blob(['﻿'+html],{type:'application/msword'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url;
+  const ds=(rawDate||new Date().toISOString().slice(0,10)).replace(/\//g,'-');
+  a.download=`توزيع_${day}_${ds}.doc`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+
+// ─────────────────────────────────────────
+// STAFF TABLE
+// ─────────────────────────────────────────
+function renderStaffTable(){
+  const q=document.getElementById('staff-search').value.trim().toLowerCase();
+  const dept=document.getElementById('staff-filt-dept').value;
+  const type=document.getElementById('staff-filt-type').value;
+  const gender=document.getElementById('staff-filt-gender').value;
+  const sort=document.getElementById('staff-sort').value;
+  let filtered=STAFF.filter(s=>{
+    if(q&&!s.name.toLowerCase().includes(q)&&!s.dept.toLowerCase().includes(q)) return false;
+    if(dept&&s.dept!==dept) return false;
+    if(type&&s.mtype!==type) return false;
+    if(gender&&s.gender!==gender) return false;
+    return true;
+  });
+  if(sort==='count_desc') filtered.sort((a,b)=>getHist(b.name).count-getHist(a.name).count);
+  else if(sort==='count_asc') filtered.sort((a,b)=>getHist(a.name).count-getHist(b.name).count);
+  document.getElementById('staff-tbody').innerHTML=filtered.map((s,i)=>{
+    const lbl=TITLE_LABEL[s.title_code]||'—';
+    const g=s.gender==='female'?'أنثى':'ذكر';
+    const tCls=s.mtype==='ملاك'?'bm':'bh';
+    const comm=s.in_committee?'<span class="bx" style="background:#fee2e2;color:#7f1d1d">لجنة</span>':'';
+    const h=getHist(s.name);
+    const lastSes=h.sessions.length?h.sessions[h.sessions.length-1]:null;
+    const lastStr=lastSes?`${lastSes.day} ${lastSes.date}`:'—';
+    const countStyle=h.count>5?'font-weight:800;color:#dc2626':h.count>0?'font-weight:700;color:#92400e':'color:#94a3b8';
+    return `<tr>
+      <td>${i+1}</td>
+      <td>
+        <strong style="cursor:pointer;text-decoration:underline dotted;color:#0d1b6e"
+          onclick="openHistPopupByName('${escHtml(s.name)}',event)">${s.name}</strong>
+      </td>
+      <td>${s.college}</td><td>${s.dept}</td><td>${lbl}</td>
+      <td><span class="bx ${tCls}">${s.mtype}</span></td>
+      <td>${g}</td>
+      <td style="font-size:11px">${s.days.join('، ')}</td>
+      <td>${s.in_committee?'✔':''} ${comm}</td>
+      <td style="${countStyle};text-align:center">${h.count}</td>
+      <td style="font-size:11px;color:#555">${lastStr}</td>
+      <td>${s.phone||'—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('staff-count').textContent=`يُعرض ${filtered.length} من ${STAFF.length} تدريسي`;
+}
+function openHistPopupByName(name,event){
+  openHistPopup(name,event);
+}
+
+// ─────────────────────────────────────────
+// HALLS TABLE
+// ─────────────────────────────────────────
+function renderHallsTable(){
+  document.getElementById('halls-tbody').innerHTML=HALLS.map((h,i)=>
+    `<tr><td>${i+1}</td><td><strong>${h.name}</strong></td><td>${h.monitors_needed}</td></tr>`
+  ).join('');
+}
+
+// ─────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────
+function showTab(el,id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('on');
+  el.classList.add('on');
+  if(id==='records') renderRecordsTab();
+  if(id==='staff')   renderStaffTable();
+  if(id==='admin')   renderAdminTab();
+}
+
+// ═════════════════════════════════════════
+// AUTH SYSTEM — MULTI-USER
+// ═════════════════════════════════════════
+const LS_USERS       = 'fuc_users_v2';
+const LS_ACTIVITY    = 'fuc_activity_v1';
+const LS_PLAT_LOCKED = 'fuc_plat_locked_v1';
+const SS_SESSION     = 'fuc_session_v1';  // {username, role, id, ts}
+
+// ── BroadcastChannel: real-time cross-tab sync ──
+let _bc = null;
+try { _bc = new BroadcastChannel('fuc_monitor_bc'); } catch(e) {}
+if (_bc) {
+  _bc.onmessage = e => {
+    const msg = e.data;
+    if (msg.type === 'platform_locked') {
+      const sess = getSession();
+      if (sess && sess.role !== 'admin') {
+        sessionStorage.removeItem(SS_SESSION);
+        showLoginOverlay(true);
+      }
+    }
+    if (msg.type === 'user_deactivated' || msg.type === 'user_deleted') {
+      const sess = getSession();
+      if (sess && sess.username === msg.username) {
+        sessionStorage.removeItem(SS_SESSION);
+        showLoginOverlay(false);
+        document.getElementById('login-err').textContent = '🔒 تم تعطيل حسابك من قِبَل المسؤول';
+      }
+    }
+    if (msg.type === 'activity_updated') {
+      const adminPanel = document.getElementById('tab-admin');
+      if (adminPanel && adminPanel.classList.contains('on')) renderActivityLog();
+    }
+  };
+}
+function bcSend(msg) { try { if(_bc) _bc.postMessage(msg); } catch(e) {} }
+
+// ── PASSWORD HASH ──
+function hashPw(pw) { return btoa(encodeURIComponent(pw + '|fuc2025')); }
+
+// ── USERS STORE ──
+function getUsers() {
+  const u = lsGet(LS_USERS, null);
+  if (!u) {
+    const init = [{ id:1, username:'admin', pw_hash:hashPw('admin'), role:'admin', active:true, createdAt:new Date().toISOString() }];
+    lsSet(LS_USERS, init);
+    return init;
+  }
+  return u;
+}
+function saveUsers(users) { lsSet(LS_USERS, users); }
+
+// ── ACTIVITY LOG ──
+function getActivity() { return lsGet(LS_ACTIVITY, []); }
+function saveActivity(a) { lsSet(LS_ACTIVITY, a); }
+function logActivity(action, detail) {
+  const sess = getSession(); if(!sess) return;
+  const entry = { id:Date.now(), ts:new Date().toISOString(), user:sess.username, role:sess.role, action, detail:detail||'' };
+  const act = getActivity();
+  act.unshift(entry);
+  if(act.length>500) act.splice(500);
+  saveActivity(act);
+  const adminPanel = document.getElementById('tab-admin');
+  if(adminPanel && adminPanel.classList.contains('on')) renderActivityLog();
+  bcSend({ type:'activity_updated' });
+}
+
+// ── SESSION ──
+function getSession() {
+  try { const s=sessionStorage.getItem(SS_SESSION); return s?JSON.parse(s):null; }
+  catch(e){ return null; }
+}
+
+// ── PLATFORM LOCK ──
+function isPlatformLocked() { return lsGet(LS_PLAT_LOCKED, false); }
+
+// ── LOGIN ──
+function doLogin() {
+  const username = document.getElementById('li-user').value.trim();
+  const pass     = document.getElementById('li-pass').value;
+  const err      = document.getElementById('login-err');
+  if (!username || !pass) { err.textContent='الرجاء إدخال اسم المستخدم وكلمة المرور'; return; }
+
+  const users = getUsers();
+  const user  = users.find(u => u.username === username);
+  if (!user || hashPw(pass) !== user.pw_hash) {
+    err.textContent = '✗ اسم المستخدم أو كلمة المرور غير صحيحة';
+    document.getElementById('li-pass').value = '';
+    return;
+  }
+  if (!user.active) { err.textContent='🔒 هذا الحساب معطَّل — تواصل مع المسؤول'; return; }
+  if (isPlatformLocked() && user.role !== 'admin') {
+    err.textContent = '🔒 المنصة مقفلة من قِبَل المسؤول — تواصل معه لفتحها'; return;
+  }
+
+  const sess = { username:user.username, role:user.role, id:user.id, ts:Date.now() };
+  sessionStorage.setItem(SS_SESSION, JSON.stringify(sess));
+  document.getElementById('login-ov').style.display = 'none';
+  document.getElementById('hdr-user').textContent   = (user.role==='admin'?'👑 ':'👤 ') + user.username;
+  err.textContent = '';
+  applyRoleUI(user.role);
+  logActivity('تسجيل دخول','');
+}
+
+// ── LOGOUT (current user) ──
+function doLock() {
+  if (!confirm('هل تريد تسجيل الخروج الآن؟')) return;
+  logActivity('تسجيل خروج','');
+  sessionStorage.removeItem(SS_SESSION);
+  showLoginOverlay(false);
+}
+
+// ── ADMIN: LOCK / UNLOCK PLATFORM ──
+function adminLockPlatform(lock) {
+  const sess = getSession(); if(!sess || sess.role!=='admin') return;
+  if (lock) {
+    if (!confirm('هل تريد قفل المنصة لجميع المستخدمين العاديين؟')) return;
+    lsSet(LS_PLAT_LOCKED, true);
+    logActivity('قفل المنصة','تم قفل المنصة لجميع المستخدمين');
+    bcSend({ type:'platform_locked' });
+  } else {
+    lsSet(LS_PLAT_LOCKED, false);
+    logActivity('فتح المنصة','تم رفع القفل عن المنصة');
+    bcSend({ type:'platform_unlocked' });
+  }
+  updatePlatformLockUI();
+  renderUsersTable();
+}
+function updatePlatformLockUI() {
+  const locked = isPlatformLocked();
+  const bl=document.getElementById('btn-plat-lock');
+  const bu=document.getElementById('btn-plat-unlock');
+  const st=document.getElementById('plat-lock-status');
+  if(bl) bl.style.display = locked?'none':'';
+  if(bu) bu.style.display = locked?'':'none';
+  if(st) st.textContent  = locked
+    ? '⚠ المنصة مقفلة — المستخدمون العاديون لا يستطيعون الدخول'
+    : '✔ المنصة مفتوحة — جميع المستخدمين المفعَّلين يستطيعون الدخول';
+}
+
+// ── SHOW LOGIN OVERLAY ──
+function showLoginOverlay(showBanner = false) {
+  document.getElementById('login-ov').style.display = 'flex';
+  document.getElementById('login-err').textContent  = '';
+  document.getElementById('li-user').value = '';
+  document.getElementById('li-pass').value = '';
+  const banner = document.getElementById('locked-bar');
+  if (showBanner && banner) banner.style.display = 'block';
+  const stored = localStorage.getItem(LS_LOGO);
+  if (stored) {
+    document.getElementById('login-logo-img').src = stored;
+    document.getElementById('login-logo-img').style.display = '';
+    document.getElementById('login-logo-ph').style.display  = 'none';
+  }
+}
+
+// ── ROLE UI ──
+function applyRoleUI(role) {
+  const adminTab = document.getElementById('tab-btn-admin');
+  if (adminTab) adminTab.style.display = (role==='admin') ? '' : 'none';
+}
+
+// ── CHANGE OWN PASSWORD ──
+function openPwModal() {
+  document.getElementById('pw-modal').classList.add('show');
+  document.getElementById('pw-old').value      = '';
+  document.getElementById('pw-new').value      = '';
+  document.getElementById('pw-new2').value     = '';
+  document.getElementById('pw-new-user').value = '';
+  document.getElementById('pw-msg').textContent = '';
+  document.getElementById('pw-msg').className   = 'auth-msg';
+}
+function closePwModal() { document.getElementById('pw-modal').classList.remove('show'); }
+function doChangePw() {
+  const oldPw  = document.getElementById('pw-old').value;
+  const newPw  = document.getElementById('pw-new').value;
+  const newPw2 = document.getElementById('pw-new2').value;
+  const newUsername = document.getElementById('pw-new-user').value.trim();
+  const msg    = document.getElementById('pw-msg');
+  const sess   = getSession(); if(!sess) return;
+
+  const users = getUsers();
+  const user  = users.find(u => u.id === sess.id);
+  if (!user || hashPw(oldPw) !== user.pw_hash) {
+    msg.textContent='✗ كلمة المرور الحالية غير صحيحة'; msg.className='auth-msg er'; return;
+  }
+  if (newPw.length < 4) {
+    msg.textContent='كلمة المرور الجديدة يجب أن تكون 4 أحرف على الأقل'; msg.className='auth-msg er'; return;
+  }
+  if (newPw !== newPw2) {
+    msg.textContent='✗ كلمتا المرور الجديدتان غير متطابقتين'; msg.className='auth-msg er'; return;
+  }
+  if (newUsername && newUsername !== user.username) {
+    if (users.some(u => u.username===newUsername && u.id!==user.id)) {
+      msg.textContent='✗ اسم المستخدم هذا مستخدم بالفعل'; msg.className='auth-msg er'; return;
+    }
+    user.username = newUsername;
+    const ns = {...sess, username:newUsername};
+    sessionStorage.setItem(SS_SESSION, JSON.stringify(ns));
+    document.getElementById('hdr-user').textContent = (sess.role==='admin'?'👑 ':'👤 ') + newUsername;
+  }
+  user.pw_hash = hashPw(newPw);
+  saveUsers(users);
+  logActivity('تغيير كلمة المرور','');
+  msg.textContent='✔ تم تحديث بيانات الدخول بنجاح'; msg.className='auth-msg ok';
+  setTimeout(closePwModal, 1500);
+}
+
+// ── ADMIN: ADD USER ──
+function openAddUserModal() {
+  document.getElementById('au-username').value=''; document.getElementById('au-pass').value='';
+  document.getElementById('au-role').value='user'; document.getElementById('au-msg').textContent='';
+  document.getElementById('au-msg').className='auth-msg';
+  document.getElementById('add-user-modal').classList.add('show');
+}
+function closeAddUserModal() { document.getElementById('add-user-modal').classList.remove('show'); }
+function doAddUser() {
+  const username = document.getElementById('au-username').value.trim();
+  const pass     = document.getElementById('au-pass').value;
+  const role     = document.getElementById('au-role').value;
+  const msg      = document.getElementById('au-msg');
+  if (!username || username.length<2) { msg.textContent='✗ اسم المستخدم يجب أن يكون حرفين على الأقل'; msg.className='auth-msg er'; return; }
+  if (!pass || pass.length<4)         { msg.textContent='✗ كلمة المرور يجب أن تكون 4 أحرف على الأقل'; msg.className='auth-msg er'; return; }
+  const users = getUsers();
+  if (users.some(u => u.username===username)) { msg.textContent='✗ اسم المستخدم هذا مستخدم بالفعل'; msg.className='auth-msg er'; return; }
+  const nu = { id:Date.now(), username, pw_hash:hashPw(pass), role, active:true, createdAt:new Date().toISOString() };
+  users.push(nu);
+  saveUsers(users);
+  logActivity('إضافة مستخدم',`"${username}" — الدور: ${role==='admin'?'مسؤول':'مستخدم'}`);
+  msg.textContent=`✔ تمت إضافة "${username}" بنجاح`; msg.className='auth-msg ok';
+  renderUsersTable();
+  setTimeout(closeAddUserModal, 1500);
+}
+
+// ── ADMIN: TOGGLE USER ACTIVE ──
+function toggleUserActive(id) {
+  const sess = getSession(); if(!sess || sess.role!=='admin') return;
+  const users = getUsers();
+  const user  = users.find(u => u.id===id); if(!user) return;
+  if (user.id===sess.id) { alert('لا يمكنك تعطيل حسابك الخاص'); return; }
+  user.active = !user.active;
+  saveUsers(users);
+  logActivity(user.active?'تفعيل مستخدم':'تعطيل مستخدم', `المستخدم: ${user.username}`);
+  if (!user.active) bcSend({ type:'user_deactivated', username:user.username });
+  renderUsersTable();
+}
+
+// ── ADMIN: DELETE USER ──
+function deleteUser(id) {
+  const sess = getSession(); if(!sess || sess.role!=='admin') return;
+  const users = getUsers();
+  const user  = users.find(u => u.id===id); if(!user) return;
+  if (user.id===sess.id) { alert('لا يمكنك حذف حسابك الخاص'); return; }
+  if (!confirm(`هل تريد حذف المستخدم "${user.username}" نهائياً؟`)) return;
+  saveUsers(users.filter(u => u.id!==id));
+  logActivity('حذف مستخدم', `المستخدم: ${user.username}`);
+  bcSend({ type:'user_deleted', username:user.username });
+  renderUsersTable();
+}
+
+// ── ADMIN: RESET OTHER USER PASSWORD ──
+function openResetPwModal(id) {
+  const users = getUsers();
+  const user  = users.find(u => u.id===id); if(!user) return;
+  document.getElementById('rp-uid').value   = id;
+  document.getElementById('rp-username').textContent = user.username;
+  document.getElementById('rp-pass').value  = '';
+  document.getElementById('rp-pass2').value = '';
+  document.getElementById('rp-msg').textContent = '';
+  document.getElementById('rp-msg').className   = 'auth-msg';
+  document.getElementById('reset-pw-modal').classList.add('show');
+}
+function closeResetPwModal() { document.getElementById('reset-pw-modal').classList.remove('show'); }
+function doResetPw() {
+  const id    = parseInt(document.getElementById('rp-uid').value);
+  const pass  = document.getElementById('rp-pass').value;
+  const pass2 = document.getElementById('rp-pass2').value;
+  const msg   = document.getElementById('rp-msg');
+  if (!pass || pass.length<4) { msg.textContent='✗ كلمة المرور يجب أن تكون 4 أحرف على الأقل'; msg.className='auth-msg er'; return; }
+  if (pass !== pass2)          { msg.textContent='✗ كلمتا المرور غير متطابقتين'; msg.className='auth-msg er'; return; }
+  const users = getUsers();
+  const user  = users.find(u => u.id===id); if(!user) return;
+  user.pw_hash = hashPw(pass);
+  saveUsers(users);
+  logActivity('إعادة تعيين كلمة المرور', `المستخدم: ${user.username}`);
+  msg.textContent='✔ تم تعيين كلمة المرور الجديدة بنجاح'; msg.className='auth-msg ok';
+  setTimeout(closeResetPwModal, 1500);
+}
+
+// ── RENDER ADMIN TAB ──
+function renderAdminTab() { renderUsersTable(); renderActivityLog(); updatePlatformLockUI(); }
+
+function renderUsersTable() {
+  const users = getUsers();
+  const sess  = getSession();
+  const tbody = document.getElementById('users-tbody'); if(!tbody) return;
+  tbody.innerHTML = users.map((u,i) => {
+    const isMe    = sess && u.id === sess.id;
+    const roleLbl = u.role==='admin' ? 'مسؤول' : 'مستخدم';
+    const roleCls = u.role==='admin' ? 'role-admin' : 'role-user';
+    const stLbl   = u.active ? '✔ نشط' : '✗ معطَّل';
+    const stCls   = u.active ? 'status-active' : 'status-inactive';
+    const created = new Date(u.createdAt).toLocaleDateString('ar-IQ');
+    return `<tr>
+      <td>${i+1}</td>
+      <td><strong>${u.username}</strong>${isMe?' <span style="font-size:10px;color:#94a3b8">(أنت)</span>':''}</td>
+      <td><span class="role-badge ${roleCls}">${roleLbl}</span></td>
+      <td><span class="${stCls}">${stLbl}</span></td>
+      <td style="font-size:11px;color:#888">${created}</td>
+      <td>
+        ${!isMe?`<div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn" style="font-size:10px;padding:2px 8px" onclick="toggleUserActive(${u.id})">${u.active?'🔒 تعطيل':'🔓 تفعيل'}</button>
+          <button class="btn" style="font-size:10px;padding:2px 8px" onclick="openResetPwModal(${u.id})">🔑 إعادة كلمة المرور</button>
+          <button class="btn br" style="font-size:10px;padding:2px 8px" onclick="deleteUser(${u.id})">🗑 حذف</button>
+        </div>`:'<span style="font-size:10px;color:#bbb">—</span>'}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderActivityLog() {
+  const act   = getActivity();
+  const tbody = document.getElementById('activity-tbody'); if(!tbody) return;
+  if (!act.length) {
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:#bbb;padding:20px">لا يوجد نشاط مسجَّل بعد</td></tr>'; return;
+  }
+  tbody.innerHTML = act.map(a => {
+    const dt = new Date(a.ts).toLocaleString('ar-IQ',{dateStyle:'short',timeStyle:'short'});
+    const rb = a.role==='admin'
+      ? `<span class="role-badge role-admin">مسؤول</span>`
+      : `<span class="role-badge role-user">مستخدم</span>`;
+    return `<tr class="act-row">
+      <td class="act-time">${dt}</td>
+      <td><strong>${a.user}</strong></td>
+      <td>${rb}</td>
+      <td class="act-action">${a.action}</td>
+      <td style="color:#666;font-size:11px">${a.detail||''}</td>
+    </tr>`;
+  }).join('');
+}
+
+function clearActivity() {
+  if(!confirm('هل تريد مسح سجل النشاط كاملاً؟')) return;
+  saveActivity([]);
+  renderActivityLog();
+}
+
+// ── INIT AUTH ──
+function initAuth() {
+  getUsers(); // ensure default admin exists
+  const sess = getSession();
+  const platLocked = isPlatformLocked();
+
+  if (!sess) { showLoginOverlay(platLocked); return; }
+
+  // Validate session: user must exist and be active
+  const users = getUsers();
+  const user  = users.find(u => u.id===sess.id && u.username===sess.username);
+  if (!user || !user.active) {
+    sessionStorage.removeItem(SS_SESSION); showLoginOverlay(false); return;
+  }
+  if (platLocked && sess.role !== 'admin') {
+    sessionStorage.removeItem(SS_SESSION); showLoginOverlay(true); return;
+  }
+
+  document.getElementById('login-ov').style.display = 'none';
+  document.getElementById('hdr-user').textContent   = (sess.role==='admin'?'👑 ':'👤 ') + sess.username;
+  applyRoleUI(sess.role);
+}
+
+// ─────────────────────────────────────────
+// LOGO
+// ─────────────────────────────────────────
+const LS_LOGO = 'fuc_uni_logo_v1';
+
+function uploadLogo(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const b64 = e.target.result;
+    localStorage.setItem(LS_LOGO, b64);
+    applyLogo(b64);
+  };
+  reader.readAsDataURL(file);
+}
+
+function applyLogo(src) {
+  // Header logo
+  const img = document.getElementById('uni-logo');
+  const ph  = document.getElementById('logo-ph');
+  img.src = src; img.style.display=''; img.style.cursor='pointer'; ph.style.display='none';
+  // Login overlay logo
+  const li = document.getElementById('login-logo-img');
+  const lp = document.getElementById('login-logo-ph');
+  if(li){ li.src=src; li.style.display=''; lp.style.display='none'; }
+}
+
+function initLogo() {
+  const stored = localStorage.getItem(LS_LOGO);
+  if(stored) applyLogo(stored);
+}
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+initLogo();
+initAuth();
+updateRecordsBadge();
+</script>
+</body>
+</html>
