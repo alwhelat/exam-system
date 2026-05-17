@@ -1391,12 +1391,11 @@ function exportWord(){
   const date=rawDate||new Date().toLocaleDateString('ar-IQ');
   const session=document.getElementById('sel-session').value;
   logActivity('تصدير Word',`اليوم: ${day} | التاريخ: ${date}`);
-  generateWordDoc(lastDist,lastReserve,day,date,session,rawDate);
+  generateWordDoc(lastDist,lastReserve,day,date,session,rawDate,[...TAKMILI_HALLS]);
 }
 
 function exportRecordWord(id){
   const rec=RECORDS.find(r=>r.id===id); if(!rec) return;
-  // Reconstruct dist-like structure from record
   const dist={};
   for(const h of rec.halls){
     dist[h.hall]={
@@ -1404,11 +1403,7 @@ function exportRecordWord(id){
       monitors:h.monitors.map(m=>m?{name:m,title_code:'other',mtype:'',gender:'male'}:null),
       hall:{name:h.hall,monitors_needed:h.needed}
     };
-    // Try to match real staff for better data
-    if(h.supervisor){
-      const rs=STAFF.find(s=>s.name===h.supervisor);
-      if(rs) dist[h.hall].supervisor=rs;
-    }
+    if(h.supervisor){const rs=STAFF.find(s=>s.name===h.supervisor);if(rs)dist[h.hall].supervisor=rs;}
     dist[h.hall].monitors=h.monitors.map(m=>{
       if(!m) return null;
       return STAFF.find(s=>s.name===m)||{name:m,title_code:'other',mtype:'',gender:'male'};
@@ -1416,39 +1411,49 @@ function exportRecordWord(id){
   }
   const reserve=rec.reserve.map(n=>STAFF.find(s=>s.name===n)||{name:n,title_code:'other',mtype:'',gender:'male'});
   const date=rec.date?rec.date.replace(/-/g,'/'):'';
-  generateWordDoc(dist,reserve,rec.day,date,rec.session||'',rec.date||'');
+  generateWordDoc(dist,reserve,rec.day,date,rec.session||'',rec.date||'',rec.takmiliHalls||[]);
 }
 
-function generateWordDoc(dist,reserve,day,date,session,rawDate){
-  let distRows='';
-  let ri=0;
-  for(const[hname,d]of Object.entries(dist)){
+function _buildWordRows(entries, tqSet){
+  let rows='', ri=0;
+  for(const[hname,d]of entries){
+    const isTq=tqSet.has(hname);
     const tot=1+d.monitors.length;
-    const bg=ri%2===0?'#EEF2FF':'#FFFFFF';
-    const sup=d.supervisor;
-    const supName=sup?sup.name:'—';
-    distRows+=`<tr>
+    const hallBg=isTq?'#fee2e2':'#dbeafe';
+    const hallClr=isTq?'#b91c1c':'#1e3a8a';
+    const hallBdr=isTq?'#fca5a5':'#6b7280';
+    const rowBg=isTq?(ri%2===0?'#fff5f5':'#ffe4e6'):(ri%2===0?'#EEF2FF':'#FFFFFF');
+    const supName=d.supervisor?d.supervisor.name:'—';
+    const tqTag=isTq?' 🔴':'';
+    rows+=`<tr>
       <td rowspan="${tot}" style="text-align:center;font-weight:800;font-size:11pt;
-        background:#dbeafe;border:1pt solid #6b7280;vertical-align:middle;padding:5pt">${hname}</td>
-      <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt 7pt">مشرف القاعة</td>
-      <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt 7pt">${supName}</td>
+        background:${hallBg};color:${hallClr};border:1.5pt solid ${hallBdr};vertical-align:middle;padding:5pt">${hname}${tqTag}</td>
+      <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt 7pt">مشرف القاعة</td>
+      <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt 7pt">${supName}</td>
       <td style="border:1pt solid #9ca3af;min-width:90pt;background:#fafafa;padding:5pt"></td>
     </tr>`;
     d.monitors.forEach((m,i)=>{
-      const bg2=ri%2===0?'#EEF2FF':'#FFFFFF';
-      const mName=m?m.name:'—';
-      distRows+=`<tr>
-        <td style="background:${bg2};border:1pt solid #9ca3af;padding:5pt 7pt">مراقب ${i+1}</td>
-        <td style="background:${bg2};border:1pt solid #9ca3af;padding:5pt 7pt">${mName}</td>
+      rows+=`<tr>
+        <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt 7pt">مراقب ${i+1}</td>
+        <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt 7pt">${m?m.name:'—'}</td>
         <td style="border:1pt solid #9ca3af;min-width:90pt;background:#fafafa;padding:5pt"></td>
       </tr>`;
     });
     ri++;
   }
+  return rows;
+}
+
+function generateWordDoc(dist,reserve,day,date,session,rawDate,takmiliHalls=[]){
+  const tqSet=new Set(takmiliHalls);
+  const tqEntries=Object.entries(dist).filter(([h])=>tqSet.has(h));
+  const regEntries=Object.entries(dist).filter(([h])=>!tqSet.has(h));
+  const tqRows=_buildWordRows(tqEntries,tqSet);
+  const regRows=_buildWordRows(regEntries,tqSet);
+
   let resRows='';
   reserve.forEach((s,i)=>{
     const bg=i%2===0?'#FFF7ED':'#FFFFFF';
-    const lbl=TITLE_LABEL[s.title_code]||'';
     resRows+=`<tr>
       <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;text-align:center">${i+1}</td>
       <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt">${s.name}</td>
@@ -1456,8 +1461,38 @@ function generateWordDoc(dist,reserve,day,date,session,rawDate){
       <td style="border:1pt solid #d1d5db;min-width:90pt;background:#fafafa;padding:5pt"></td>
     </tr>`;
   });
+
   const now=new Date().toLocaleString('ar-IQ');
   const sesLine=session?`&nbsp;&nbsp;&nbsp;&nbsp;الدورة: <strong>${session}</strong>`:'';
+
+  const tqSection=tqRows?`
+<h2 style="font-size:13pt;color:#b91c1c;margin:14pt 0 6pt;border-right:4pt solid #dc2626;padding-right:7pt">
+  🔴 قاعات الامتحان التقويمي (${tqEntries.length} قاعة)
+</h2>
+<table>
+  <thead><tr>
+    <th style="background:#b91c1c;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #7f1d1d;width:11%;text-align:center">القاعة</th>
+    <th style="background:#b91c1c;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #7f1d1d;width:19%">الدور</th>
+    <th style="background:#b91c1c;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #7f1d1d;width:42%">الاسم</th>
+    <th style="background:#b91c1c;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #7f1d1d;width:28%;text-align:center">التوقيع</th>
+  </tr></thead>
+  <tbody>${tqRows}</tbody>
+</table>`:'';
+
+  const regSection=regRows?`
+<h2 style="font-size:13pt;color:#1e3a8a;margin:14pt 0 6pt;border-right:4pt solid #1e3a8a;padding-right:7pt">
+  قاعات الامتحان النهائي (${regEntries.length} قاعة)
+</h2>
+<table>
+  <thead><tr>
+    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:11%;text-align:center">القاعة</th>
+    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:19%">الدور</th>
+    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:42%">الاسم</th>
+    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:28%;text-align:center">التوقيع</th>
+  </tr></thead>
+  <tbody>${regRows}</tbody>
+</table>`:'';
+
   const html=`<!DOCTYPE html><html dir="rtl" lang="ar">
 <head><meta charset="UTF-8"><title>جدول توزيع المراقبين</title>
 <style>
@@ -1466,8 +1501,6 @@ function generateWordDoc(dist,reserve,day,date,session,rawDate){
   .uni{text-align:center;font-size:14pt;color:#1e3a8a;font-weight:bold;margin-bottom:2pt}
   .info{text-align:center;font-size:11pt;color:#374151;margin:10pt 0;padding:5pt 0;border-top:1pt solid #e5e7eb;border-bottom:1pt solid #e5e7eb}
   table{border-collapse:collapse;width:100%;margin-bottom:16pt}
-  th{background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151}
-  h2{font-size:13pt;color:#92400e;margin:14pt 0 6pt;border-right:4pt solid #f59e0b;padding-right:7pt}
   .footer{text-align:center;font-size:8pt;color:#9ca3af;margin-top:16pt;border-top:1pt solid #e5e7eb;padding-top:5pt}
 </style></head>
 <body>
@@ -1475,44 +1508,32 @@ function generateWordDoc(dist,reserve,day,date,session,rawDate){
 <h1>جدول توزيع مراقبي الامتحانات النهائية</h1>
 <div class="info">
   اليوم: <strong>${day}</strong> &nbsp;&nbsp;&nbsp;&nbsp; التاريخ: <strong>${date}</strong> ${sesLine}
+  ${tqEntries.length?`&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#b91c1c;font-weight:bold">🔴 تقويمي: ${tqEntries.length} قاعة</span>`:''}
 </div>
+${tqSection}${regSection}
+${reserve.length?`<h2 style="font-size:13pt;color:#92400e;margin:14pt 0 6pt;border-right:4pt solid #f59e0b;padding-right:7pt">قائمة الاحتياط (${reserve.length} شخص)</h2>
 <table>
   <thead><tr>
-    <th style="width:11%;text-align:center">القاعة</th>
-    <th style="width:19%">الدور</th>
-    <th style="width:42%">الاسم</th>
-    <th style="width:28%;text-align:center">التوقيع</th>
-  </tr></thead>
-  <tbody>${distRows}</tbody>
-</table>
-${reserve.length?`<h2>قائمة الاحتياط (${reserve.length} شخص)</h2>
-<table>
-  <thead><tr>
-    <th style="width:7%;text-align:center">#</th>
-    <th style="width:40%">الاسم</th>
-    <th style="width:25%">القسم</th>
-    <th style="width:28%;text-align:center">التوقيع</th>
+    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:center;font-size:10pt;border:1pt solid #374151;width:7%">#</th>
+    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:40%">الاسم</th>
+    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:25%">القسم</th>
+    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:center;font-size:10pt;border:1pt solid #374151;width:28%">التوقيع</th>
   </tr></thead>
   <tbody>${resRows}</tbody>
 </table>`:''}
 <div class="footer">
-  تم الإنشاء: ${now} &nbsp;|&nbsp; القاعات: ${Object.keys(dist).length}
+  تم الإنشاء: ${now} &nbsp;|&nbsp; القاعات: ${Object.keys(dist).length}${tqEntries.length?' (منها '+tqEntries.length+' تقويمي)':''}
   &nbsp;|&nbsp; الاحتياط: ${reserve.length} &nbsp;|&nbsp; جامعة الفارابي — لجنة الامتحانات
 </div></body></html>`;
   const ds=(rawDate||new Date().toISOString().slice(0,10)).replace(/\//g,'-');
-  try {
-    const blob = typeof htmlDocx !== 'undefined'
-      ? htmlDocx.asBlob(html)
-      : new Blob([html], {type:'application/msword'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href=url;
-    a.download = `توزيع_${day}_${ds}.docx`;
+  try{
+    const blob=typeof htmlDocx!=='undefined'?htmlDocx.asBlob(html):new Blob([html],{type:'application/msword'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url;
+    a.download=`توزيع_${day}_${ds}.docx`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url), 3000);
-  } catch(e) {
-    alert('حدث خطأ أثناء إنشاء ملف DOCX: ' + e.message);
-    console.error(e);
-  }
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+  }catch(e){alert('حدث خطأ أثناء إنشاء ملف DOCX: '+e.message);console.error(e);}
 }
 
 // ─────────────────────────────────────────
@@ -2066,7 +2087,7 @@ function exportPDF() {
   const date    = rawDate || new Date().toLocaleDateString('ar-IQ');
   const session = document.getElementById('sel-session').value;
   logActivity('تصدير PDF', `اليوم: ${day} | التاريخ: ${date}`);
-  _genPDF(lastDist, lastReserve, day, date, session, rawDate);
+  _genPDF(lastDist, lastReserve, day, date, session, rawDate, [...TAKMILI_HALLS]);
 }
 
 function exportRecordPDF(id) {
@@ -2086,31 +2107,49 @@ function exportRecordPDF(id) {
   }
   const reserve = rec.reserve.map(n => STAFF.find(s => s.name === n) || {name:n, title_code:'other', mtype:'', gender:'male', dept:''});
   const date = rec.date ? rec.date.replace(/-/g, '/') : '';
-  _genPDF(dist, reserve, rec.day, date, rec.session || '', rec.date || '');
+  _genPDF(dist, reserve, rec.day, date, rec.session || '', rec.date || '', rec.takmiliHalls || []);
 }
 
-function _genPDF(dist, reserve, day, date, session, rawDate) {
-  const th = 'background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;border:1pt solid #374151;font-weight:700';
-  let distRows = '', ri = 0;
-  for (const [hname, d] of Object.entries(dist)) {
-    const tot = 1 + d.monitors.length;
-    const bg  = ri % 2 === 0 ? '#EEF2FF' : '#FFFFFF';
-    const supName = d.supervisor ? d.supervisor.name : '—';
-    distRows += `<tr>
-      <td rowspan="${tot}" style="text-align:center;font-weight:800;background:#dbeafe;border:1pt solid #6b7280;vertical-align:middle;padding:5pt">${hname}</td>
-      <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt">مشرف القاعة</td>
-      <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt">${supName}</td>
+function _buildDistRows(entries, tqSet) {
+  let rows = '', ri = 0;
+  for (const [hname, d] of entries) {
+    const isTq  = tqSet.has(hname);
+    const tot   = 1 + d.monitors.length;
+    const hallBg = isTq ? '#fee2e2' : '#dbeafe';
+    const hallClr= isTq ? '#b91c1c' : '#1e3a8a';
+    const hallBdr= isTq ? '#fca5a5' : '#6b7280';
+    const rowBg  = isTq ? (ri%2===0?'#fff5f5':'#ffe4e6') : (ri%2===0?'#EEF2FF':'#FFFFFF');
+    const supName= d.supervisor ? d.supervisor.name : '—';
+    const tqTag  = isTq ? ' 🔴' : '';
+    rows += `<tr>
+      <td rowspan="${tot}" style="text-align:center;font-weight:800;font-size:11pt;background:${hallBg};color:${hallClr};border:1.5pt solid ${hallBdr};vertical-align:middle;padding:5pt">${hname}${tqTag}</td>
+      <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt">مشرف القاعة</td>
+      <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt">${supName}</td>
       <td style="border:1pt solid #9ca3af;min-width:70pt;background:#fafafa;padding:5pt"></td>
     </tr>`;
     d.monitors.forEach((m, i) => {
-      distRows += `<tr>
-        <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt">مراقب ${i+1}</td>
-        <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt">${m ? m.name : '—'}</td>
+      rows += `<tr>
+        <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt">مراقب ${i+1}</td>
+        <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt">${m ? m.name : '—'}</td>
         <td style="border:1pt solid #9ca3af;min-width:70pt;background:#fafafa;padding:5pt"></td>
       </tr>`;
     });
     ri++;
   }
+  return rows;
+}
+
+function _genPDF(dist, reserve, day, date, session, rawDate, takmiliHalls = []) {
+  const tqSet   = new Set(takmiliHalls);
+  const th      = 'background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;border:1pt solid #374151;font-weight:700';
+  const thRed   = 'background:#b91c1c;color:#fff;padding:6pt 8pt;text-align:right;border:1pt solid #7f1d1d;font-weight:700';
+  const colW    = 'width:11%;text-align:center';
+
+  const tqEntries  = Object.entries(dist).filter(([h]) => tqSet.has(h));
+  const regEntries = Object.entries(dist).filter(([h]) => !tqSet.has(h));
+  const tqRows  = tqEntries.length  ? _buildDistRows(tqEntries,  tqSet) : '';
+  const regRows = regEntries.length ? _buildDistRows(regEntries, tqSet) : '';
+
   let resRows = '';
   reserve.forEach((s, i) => {
     const bg = i % 2 === 0 ? '#FFF7ED' : '#FFFFFF';
@@ -2121,9 +2160,37 @@ function _genPDF(dist, reserve, day, date, session, rawDate) {
       <td style="border:1pt solid #d1d5db;min-width:70pt;background:#fafafa;padding:5pt"></td>
     </tr>`;
   });
+
   const sesLine = session ? `&nbsp;&nbsp; الدورة: <strong>${session}</strong>` : '';
   const now = new Date().toLocaleString('ar-IQ');
-  const ds  = (rawDate||new Date().toISOString().slice(0,10)).replace(/\//g,'-');
+
+  const tqSection = tqRows ? `
+    <h2 style="color:#b91c1c;border-right:4pt solid #dc2626;padding-right:8pt;margin:10pt 0 5pt">
+      🔴 قاعات الامتحان التقويمي (${tqEntries.length} قاعة)
+    </h2>
+    <table>
+      <thead><tr>
+        <th style="${thRed};${colW}">القاعة</th>
+        <th style="${thRed};width:19%">الدور</th>
+        <th style="${thRed};width:42%">الاسم</th>
+        <th style="${thRed};width:28%;text-align:center">التوقيع</th>
+      </tr></thead>
+      <tbody>${tqRows}</tbody>
+    </table>` : '';
+
+  const regSection = regRows ? `
+    <h2 style="color:#1e3a8a;border-right:4pt solid #1E3A8A;padding-right:8pt;margin:10pt 0 5pt">
+      قاعات الامتحان النهائي (${regEntries.length} قاعة)
+    </h2>
+    <table>
+      <thead><tr>
+        <th style="${th};${colW}">القاعة</th>
+        <th style="${th};width:19%">الدور</th>
+        <th style="${th};width:42%">الاسم</th>
+        <th style="${th};width:28%;text-align:center">التوقيع</th>
+      </tr></thead>
+      <tbody>${regRows}</tbody>
+    </table>` : '';
 
   const htmlStr = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
 <title>توزيع المراقبين — ${day} ${date}</title><style>
@@ -2131,19 +2198,12 @@ function _genPDF(dist, reserve, day, date, session, rawDate) {
 body{font-family:Arial,'Traditional Arabic',Tahoma,sans-serif;direction:rtl;color:#111;font-size:11pt}
 table{border-collapse:collapse;width:100%;margin-bottom:14pt}
 h1{text-align:center;font-size:15pt;color:#0d1b6e;margin-bottom:4pt}
-h2{font-size:12pt;color:#92400e;margin:12pt 0 5pt;border-right:3pt solid #f59e0b;padding-right:6pt}
+h2{font-size:12pt;margin:12pt 0 5pt}
 .uni{text-align:center;font-size:14pt;color:#1e3a8a;font-weight:700;margin-bottom:2pt}
 .info{text-align:center;font-size:10pt;margin:8pt 0;padding:5pt 0;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
 .footer{text-align:center;font-size:8pt;color:#9ca3af;margin-top:12pt;border-top:1px solid #e5e7eb;padding-top:5pt}
-@media screen{
-  .bar{position:fixed;top:0;left:0;right:0;background:#0d1b6e;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:14px;z-index:999;flex-wrap:wrap}
-  .content{margin-top:58px;padding:16px}
-}
-@media print{
-  .bar{display:none!important}
-  .content{margin-top:0;padding:0}
-  body{padding:1cm}
-}
+@media screen{.bar{position:fixed;top:0;left:0;right:0;background:#0d1b6e;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:14px;z-index:999;flex-wrap:wrap}.content{margin-top:58px;padding:16px}}
+@media print{.bar{display:none!important}.content{margin-top:0;padding:0}body{padding:1cm}}
 </style></head><body>
 <div class="bar">
   <button onclick="window.print()" style="background:#fff;color:#0d1b6e;border:none;padding:9px 26px;border-radius:7px;font-weight:800;cursor:pointer;font-size:14px;font-family:inherit">🖨 طباعة / حفظ PDF</button>
@@ -2153,17 +2213,9 @@ h2{font-size:12pt;color:#92400e;margin:12pt 0 5pt;border-right:3pt solid #f59e0b
 <div class="content">
   <div class="uni">جـامـعـة الـفـارابـي</div>
   <h1>جدول توزيع مراقبي الامتحانات النهائية</h1>
-  <div class="info">اليوم: <strong>${day}</strong> &nbsp;&nbsp; التاريخ: <strong>${date}</strong>${sesLine}</div>
-  <table>
-    <thead><tr>
-      <th style="${th};width:11%;text-align:center">القاعة</th>
-      <th style="${th};width:19%">الدور</th>
-      <th style="${th};width:42%">الاسم</th>
-      <th style="${th};width:28%;text-align:center">التوقيع</th>
-    </tr></thead>
-    <tbody>${distRows}</tbody>
-  </table>
-  ${reserve.length ? `<h2>قائمة الاحتياط (${reserve.length} شخص)</h2>
+  <div class="info">اليوم: <strong>${day}</strong> &nbsp;&nbsp; التاريخ: <strong>${date}</strong>${sesLine}${tqEntries.length?` &nbsp;&nbsp; <span style="color:#b91c1c;font-weight:800">🔴 تقويمي: ${tqEntries.length} قاعة</span>`:''}</div>
+  ${tqSection}${regSection}
+  ${reserve.length ? `<h2 style="color:#92400e;border-right:3pt solid #f59e0b;padding-right:6pt">قائمة الاحتياط (${reserve.length} شخص)</h2>
   <table>
     <thead><tr>
       <th style="${th};width:7%;text-align:center">#</th>
@@ -2173,7 +2225,7 @@ h2{font-size:12pt;color:#92400e;margin:12pt 0 5pt;border-right:3pt solid #f59e0b
     </tr></thead>
     <tbody>${resRows}</tbody>
   </table>` : ''}
-  <div class="footer">تم الإنشاء: ${now} | القاعات: ${Object.keys(dist).length} | الاحتياط: ${reserve.length} | جامعة الفارابي — لجنة الامتحانات</div>
+  <div class="footer">تم الإنشاء: ${now} | القاعات: ${Object.keys(dist).length}${tqEntries.length?' (منها '+tqEntries.length+' تقويمي)':''} | الاحتياط: ${reserve.length} | جامعة الفارابي — لجنة الامتحانات</div>
 </div>
 </body></html>`;
 
