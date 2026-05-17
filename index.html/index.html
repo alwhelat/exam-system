@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>نظام توزيع مراقبي الامتحانات — جامعة الفارابي 2025/2026</title>
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#eef0f7;color:#1a1a2e;direction:rtl;font-size:14px}
@@ -172,9 +174,17 @@ tr:hover td{background:#eef2ff}
 .act-time{color:#94a3b8;white-space:nowrap;font-size:10px}
 .act-action{font-weight:600;color:#1e40af}
 .admin-section{background:#fff;border-radius:10px;padding:13px 15px;margin-bottom:11px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fb-spin{width:46px;height:46px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .75s linear infinite}
 </style>
 </head>
 <body>
+
+<!-- ══ FIREBASE LOADING ══ -->
+<div id="fb-loading" style="position:fixed;inset:0;background:linear-gradient(160deg,#050d40,#0d1b6e,#1a3a8f);z-index:10000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px">
+  <div class="fb-spin"></div>
+  <div style="color:#fff;font-size:14px;font-weight:700;font-family:'Segoe UI',Tahoma,sans-serif;direction:rtl">جاري الاتصال بقاعدة البيانات...</div>
+</div>
 
 <!-- ══ LOGIN OVERLAY ══ -->
 <div class="login-ov" id="login-ov">
@@ -502,6 +512,82 @@ tr:hover td{background:#eef2ff}
 
 <!-- ══════════════════ JAVASCRIPT ══════════════════ -->
 <script>
+// ═════════════════════════════════════════
+// FIREBASE SETUP
+// ═════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyA2H93tqSBdNcDo2rt7vkHuvScKWqkO9dc",
+  authDomain: "exam-system-16d0b.firebaseapp.com",
+  projectId: "exam-system-16d0b",
+  storageBucket: "exam-system-16d0b.firebasestorage.app",
+  messagingSenderId: "219517339171",
+  appId: "1:219517339171:web:3d2e2fb60e6390f64d1396"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ── Firebase data cache (loaded on init) ──
+let FB_USERS           = [];
+let FB_PLATFORM_LOCKED = false;
+let FB_ACTIVITY        = [];
+
+async function loadFirebaseData() {
+  // ── Users ──
+  const uSnap = await db.collection('system').doc('users').get();
+  if (uSnap.exists) {
+    FB_USERS = uSnap.data().list || [];
+  } else {
+    FB_USERS = [{ id:1, username:'admin', pw_hash:hashPw('admin'), role:'admin', active:true, createdAt:new Date().toISOString() }];
+    db.collection('system').doc('users').set({ list: FB_USERS });
+  }
+
+  // ── Platform lock ──
+  const pSnap = await db.collection('system').doc('platform').get();
+  FB_PLATFORM_LOCKED = pSnap.exists ? (pSnap.data().locked || false) : false;
+
+  // ── Activity log ──
+  const aSnap = await db.collection('system').doc('activity').get();
+  FB_ACTIVITY = aSnap.exists ? (aSnap.data().log || []) : [];
+
+  // ── Real-time listeners ──
+  db.collection('system').doc('users').onSnapshot(snap => {
+    if (snap.exists) FB_USERS = snap.data().list || [];
+    const ap = document.getElementById('tab-admin');
+    if (ap && ap.classList.contains('on')) renderUsersTable();
+  });
+
+  db.collection('system').doc('platform').onSnapshot(snap => {
+    FB_PLATFORM_LOCKED = snap.exists ? (snap.data().locked || false) : false;
+    if (FB_PLATFORM_LOCKED) {
+      const sess = getSession();
+      if (sess && sess.role !== 'admin') {
+        sessionStorage.removeItem(SS_SESSION);
+        showLoginOverlay(true);
+      }
+    }
+    updatePlatformLockUI();
+  });
+
+  db.collection('system').doc('activity').onSnapshot(snap => {
+    if (snap.exists) FB_ACTIVITY = snap.data().log || [];
+    const ap = document.getElementById('tab-admin');
+    if (ap && ap.classList.contains('on')) renderActivityLog();
+  });
+}
+
+function fbSaveUsers(users) {
+  FB_USERS = users;
+  db.collection('system').doc('users').set({ list: users }).catch(e => console.error('fbSaveUsers', e));
+}
+function fbSaveActivity(act) {
+  FB_ACTIVITY = act;
+  db.collection('system').doc('activity').set({ log: act }).catch(e => console.error('fbSaveActivity', e));
+}
+function fbSavePlatformLocked(val) {
+  FB_PLATFORM_LOCKED = val;
+  db.collection('system').doc('platform').set({ locked: val }).catch(e => console.error('fbSavePlatLocked', e));
+}
+
 // ─────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────
@@ -1309,21 +1395,13 @@ function bcSend(msg) { try { if(_bc) _bc.postMessage(msg); } catch(e) {} }
 // ── PASSWORD HASH ──
 function hashPw(pw) { return btoa(encodeURIComponent(pw + '|fuc2025')); }
 
-// ── USERS STORE ──
-function getUsers() {
-  const u = lsGet(LS_USERS, null);
-  if (!u) {
-    const init = [{ id:1, username:'admin', pw_hash:hashPw('admin'), role:'admin', active:true, createdAt:new Date().toISOString() }];
-    lsSet(LS_USERS, init);
-    return init;
-  }
-  return u;
-}
-function saveUsers(users) { lsSet(LS_USERS, users); }
+// ── USERS STORE (Firebase-backed) ──
+function getUsers() { return FB_USERS; }
+function saveUsers(users) { fbSaveUsers(users); }
 
-// ── ACTIVITY LOG ──
-function getActivity() { return lsGet(LS_ACTIVITY, []); }
-function saveActivity(a) { lsSet(LS_ACTIVITY, a); }
+// ── ACTIVITY LOG (Firebase-backed) ──
+function getActivity() { return FB_ACTIVITY; }
+function saveActivity(a) { fbSaveActivity(a); }
 function logActivity(action, detail) {
   const sess = getSession(); if(!sess) return;
   const entry = { id:Date.now(), ts:new Date().toISOString(), user:sess.username, role:sess.role, action, detail:detail||'' };
@@ -1342,8 +1420,8 @@ function getSession() {
   catch(e){ return null; }
 }
 
-// ── PLATFORM LOCK ──
-function isPlatformLocked() { return lsGet(LS_PLAT_LOCKED, false); }
+// ── PLATFORM LOCK (Firebase-backed) ──
+function isPlatformLocked() { return FB_PLATFORM_LOCKED; }
 
 // ── LOGIN ──
 function doLogin() {
@@ -1386,11 +1464,11 @@ function adminLockPlatform(lock) {
   const sess = getSession(); if(!sess || sess.role!=='admin') return;
   if (lock) {
     if (!confirm('هل تريد قفل المنصة لجميع المستخدمين العاديين؟')) return;
-    lsSet(LS_PLAT_LOCKED, true);
+    fbSavePlatformLocked(true);
     logActivity('قفل المنصة','تم قفل المنصة لجميع المستخدمين');
     bcSend({ type:'platform_locked' });
   } else {
-    lsSet(LS_PLAT_LOCKED, false);
+    fbSavePlatformLocked(false);
     logActivity('فتح المنصة','تم رفع القفل عن المنصة');
     bcSend({ type:'platform_unlocked' });
   }
@@ -1675,8 +1753,21 @@ function initLogo() {
 // INIT
 // ─────────────────────────────────────────
 initLogo();
-initAuth();
-updateRecordsBadge();
+(async () => {
+  try {
+    await loadFirebaseData();
+  } catch(e) {
+    console.error('Firebase connection failed, using local fallback:', e);
+    // Fallback to localStorage if Firebase unreachable
+    const lu = lsGet(LS_USERS, null);
+    FB_USERS = lu || [{ id:1, username:'admin', pw_hash:hashPw('admin'), role:'admin', active:true, createdAt:new Date().toISOString() }];
+    FB_PLATFORM_LOCKED = lsGet(LS_PLAT_LOCKED, false);
+    FB_ACTIVITY = lsGet(LS_ACTIVITY, []);
+  }
+  document.getElementById('fb-loading').style.display = 'none';
+  initAuth();
+  updateRecordsBadge();
+})();
 </script>
 </body>
 </html>
