@@ -131,6 +131,29 @@ tr:hover td{background:#eef2ff}
   .g3{grid-template-columns:1fr}
   .hgrid{grid-template-columns:repeat(auto-fill,minmax(76px,1fr))}
 }
+/* ── الحضور (Attendance) ── */
+.att-rec-sel{width:100%;max-width:420px;padding:8px 12px;font-size:13px;border:1.5px solid #c8cfe8;border-radius:8px;font-family:inherit;direction:rtl}
+.att-stats-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.att-stat-box{text-align:center;padding:10px 6px;border-radius:8px;font-weight:800}
+.att-present-box{background:#f0fdf4;border:1px solid #86efac;color:#15803d}
+.att-absent-box{background:#fff1f2;border:1px solid #fca5a5;color:#b91c1c}
+.att-pending-box{background:#f8fafc;border:1px solid #e2e8f0;color:#64748b}
+.att-stat-box .atn{font-size:24px;font-weight:900;display:block}
+.att-stat-box .atl{font-size:10px;margin-top:2px}
+.att-hall{background:#fff;border:1px solid #dde1f0;border-radius:9px;margin-bottom:8px;overflow:hidden}
+.att-hall-hdr{background:#f0f2ff;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #dde1f0}
+.att-hall-title{font-weight:700;font-size:13px;color:#0d1b6e}
+.att-hall-tally{font-size:11px;display:flex;gap:6px}
+.att-hall-body{padding:4px 12px}
+.att-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed #eee;flex-wrap:wrap}
+.att-row:last-child{border-bottom:none}
+.att-role-tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.att-name{flex:1;font-size:13px;font-weight:600;min-width:120px}
+.att-btns{display:flex;gap:5px;flex-shrink:0}
+.att-btn-p{width:34px;height:34px;border-radius:7px;border:1.5px solid #86efac;background:#f0fdf4;color:#16a34a;font-size:16px;cursor:pointer;font-weight:900;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.att-btn-p.on{background:#16a34a;border-color:#15803d;color:#fff;box-shadow:0 2px 6px rgba(21,128,61,.3)}
+.att-btn-a{width:34px;height:34px;border-radius:7px;border:1.5px solid #fca5a5;background:#fff1f2;color:#dc2626;font-size:16px;cursor:pointer;font-weight:900;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.att-btn-a.on{background:#dc2626;border-color:#b91c1c;color:#fff;box-shadow:0 2px 6px rgba(220,38,38,.3)}
 /* ─── AUTH ─── */
 .login-ov{position:fixed;inset:0;background:linear-gradient(160deg,#050d40 0%,#0d1b6e 50%,#1a3a8f 100%);z-index:9999;display:flex;align-items:center;justify-content:center}
 .login-box{background:#fff;border-radius:18px;padding:38px 42px;width:400px;max-width:92vw;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.4)}
@@ -303,6 +326,7 @@ tr:hover td{background:#eef2ff}
     📁 السجلات <span class="tab-badge" id="rec-count-badge" style="display:none">0</span>
   </div>
   <div class="tab" id="tab-btn-admin" style="display:none" onclick="showTab(this,'admin')">👑 الإدارة</div>
+  <div class="tab" id="tab-btn-attendance" style="display:none" onclick="showTab(this,'attendance')">📋 الحضور</div>
 </div>
 
 <!-- ══════════════════ DISTRIBUTION PANEL ══════════════════ -->
@@ -472,6 +496,36 @@ tr:hover td{background:#eef2ff}
   </div>
 </div>
 
+<!-- ══════════════════ ATTENDANCE PANEL ══════════════════ -->
+<div class="panel wrap" id="tab-attendance">
+  <div class="card">
+    <div class="ct">
+      <span>📋 أخذ حضور المراقبين والمشرفين</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <label style="font-size:12px;font-weight:700;color:#0d1b6e;white-space:nowrap">سجل التوزيع:</label>
+      <select id="att-rec-select" class="att-rec-sel" onchange="loadAttendanceRecord(this.value)">
+        <option value="">— اختر سجل التوزيع النهائي —</option>
+      </select>
+    </div>
+    <p style="font-size:11px;color:#94a3b8;margin-top:7px">اختر سجل التوزيع المحفوظ ثم سجّل حضور أو غياب كل مراقب ومشرف — اضغط ✔ للحضور أو ✗ للغياب</p>
+  </div>
+  <div id="att-stats-wrap" style="display:none">
+    <div class="card" style="padding-bottom:8px">
+      <div class="att-stats-bar">
+        <div class="att-stat-box att-present-box"><span class="atn" id="att-cnt-p">0</span><div class="atl">✔ حاضر</div></div>
+        <div class="att-stat-box att-absent-box"><span class="atn" id="att-cnt-a">0</span><div class="atl">✗ غائب</div></div>
+        <div class="att-stat-box att-pending-box"><span class="atn" id="att-cnt-n">0</span><div class="atl">⬜ لم يُسجَّل</div></div>
+      </div>
+      <div style="text-align:center;margin-top:6px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn bg" style="padding:8px 22px;font-size:13px" onclick="exportAttendancePDF()">📋 تصدير PDF (حضور وغياب)</button>
+        <button class="btn" style="padding:8px 16px;font-size:12px" onclick="markAllPresent()">✔ تحديد الكل حاضر</button>
+      </div>
+    </div>
+  </div>
+  <div id="att-sheet"></div>
+</div>
+
 <!-- ══ ADD USER MODAL ══ -->
 <div class="auth-modal-ov" id="add-user-modal">
   <div class="auth-modal">
@@ -483,6 +537,7 @@ tr:hover td{background:#eef2ff}
     <label class="auth-field-lbl">الدور</label>
     <select class="auth-field" id="au-role" style="padding:9px 12px;font-size:13px;border:1.5px solid #c8cfe8;border-radius:7px;font-family:inherit;margin-bottom:12px">
       <option value="user">مستخدم عادي</option>
+      <option value="attendance">مشرف حضور (يأخذ الحضور فقط)</option>
       <option value="admin">مسؤول (admin)</option>
     </select>
     <div class="auth-msg" id="au-msg"></div>
@@ -627,8 +682,9 @@ const FEM_NAMES = new Set([
   'رند','شيماء','منال','نورالهدى','فهيمة','اتحاد','ماجدة','سرى','سحر','صفاء','ايمان',
   'روضة','حنان','خلود','سماء','عبير','رهام','وجدان','نادية'
 ]);
-const LS_RECORDS = 'fuc_exam_records_v1';
-const LS_HISTORY = 'fuc_monitor_history_v1';
+const LS_RECORDS    = 'fuc_exam_records_v1';
+const LS_HISTORY    = 'fuc_monitor_history_v1';
+const LS_ATTENDANCE = 'fuc_attendance_v1';
 
 // ─────────────────────────────────────────
 // STATE
@@ -636,9 +692,11 @@ const LS_HISTORY = 'fuc_monitor_history_v1';
 let STAFF=[], HALLS=[];
 let lastDist=null, lastReserve=[], lastRemaining=[];
 let staffWb=null, hallsWb=null;
-let RECORDS = lsGet(LS_RECORDS, []);
-let HISTORY = lsGet(LS_HISTORY, {});
+let RECORDS    = lsGet(LS_RECORDS, []);
+let HISTORY    = lsGet(LS_HISTORY, {});
+let ATTENDANCE = lsGet(LS_ATTENDANCE, {});
 let TAKMILI_HALLS = new Set();
+let _attRecId = null;
 
 // ─────────────────────────────────────────
 // LOCAL STORAGE HELPERS
@@ -1458,9 +1516,10 @@ function showTab(el,id){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.getElementById('tab-'+id).classList.add('on');
   el.classList.add('on');
-  if(id==='records') renderRecordsTab();
-  if(id==='staff')   renderStaffTable();
-  if(id==='admin')   renderAdminTab();
+  if(id==='records')    renderRecordsTab();
+  if(id==='staff')      renderStaffTable();
+  if(id==='admin')      renderAdminTab();
+  if(id==='attendance') renderAttendanceTab();
 }
 
 // ═════════════════════════════════════════
@@ -1553,7 +1612,8 @@ function doLogin() {
   const sess = { username:user.username, role:user.role, id:user.id, ts:Date.now() };
   sessionStorage.setItem(SS_SESSION, JSON.stringify(sess));
   document.getElementById('login-ov').style.display = 'none';
-  document.getElementById('hdr-user').textContent   = (user.role==='admin'?'👑 ':'👤 ') + user.username;
+  const roleIcon = user.role==='admin'?'👑 ':user.role==='attendance'?'📋 ':'👤 ';
+  document.getElementById('hdr-user').textContent = roleIcon + user.username;
   err.textContent = '';
   applyRoleUI(user.role);
   logActivity('تسجيل دخول','');
@@ -1614,7 +1674,23 @@ function showLoginOverlay(showBanner = false) {
 // ── ROLE UI ──
 function applyRoleUI(role) {
   const adminTab = document.getElementById('tab-btn-admin');
+  const attTab   = document.getElementById('tab-btn-attendance');
   if (adminTab) adminTab.style.display = (role==='admin') ? '' : 'none';
+  if (attTab)   attTab.style.display   = (role==='admin' || role==='attendance') ? '' : 'none';
+
+  if (role === 'attendance') {
+    // Hide all other tabs, show only attendance tab
+    document.querySelectorAll('.tab').forEach(t => { t.style.display = 'none'; });
+    if (attTab) { attTab.style.display = ''; attTab.classList.add('on'); }
+    // Hide the file-load panel
+    const lp = document.querySelector('.load-panel');
+    if (lp) lp.style.display = 'none';
+    // Switch to attendance panel
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+    const ap = document.getElementById('tab-attendance');
+    if (ap) ap.classList.add('on');
+    renderAttendanceTab();
+  }
 }
 
 // ── CHANGE OWN PASSWORD ──
@@ -1683,7 +1759,8 @@ function doAddUser() {
   const nu = { id:Date.now(), username, pw_hash:hashPw(pass), role, active:true, createdAt:new Date().toISOString() };
   users.push(nu);
   saveUsers(users);
-  logActivity('إضافة مستخدم',`"${username}" — الدور: ${role==='admin'?'مسؤول':'مستخدم'}`);
+  const roleName = role==='admin'?'مسؤول':role==='attendance'?'مشرف حضور':'مستخدم';
+  logActivity('إضافة مستخدم',`"${username}" — الدور: ${roleName}`);
   msg.textContent=`✔ تمت إضافة "${username}" بنجاح`; msg.className='auth-msg ok';
   renderUsersTable();
   setTimeout(closeAddUserModal, 1500);
@@ -1753,8 +1830,8 @@ function renderUsersTable() {
   const tbody = document.getElementById('users-tbody'); if(!tbody) return;
   tbody.innerHTML = users.map((u,i) => {
     const isMe    = sess && u.id === sess.id;
-    const roleLbl = u.role==='admin' ? 'مسؤول' : 'مستخدم';
-    const roleCls = u.role==='admin' ? 'role-admin' : 'role-user';
+    const roleLbl = u.role==='admin' ? 'مسؤول' : u.role==='attendance' ? 'مشرف حضور' : 'مستخدم';
+    const roleCls = u.role==='admin' ? 'role-admin' : u.role==='attendance' ? 'role-badge' : 'role-user';
     const stLbl   = u.active ? '✔ نشط' : '✗ معطَّل';
     const stCls   = u.active ? 'status-active' : 'status-inactive';
     const created = new Date(u.createdAt).toLocaleDateString('ar-IQ');
@@ -1785,6 +1862,8 @@ function renderActivityLog() {
     const dt = new Date(a.ts).toLocaleString('ar-IQ',{dateStyle:'short',timeStyle:'short'});
     const rb = a.role==='admin'
       ? `<span class="role-badge role-admin">مسؤول</span>`
+      : a.role==='attendance'
+      ? `<span class="role-badge" style="background:#fef3c7;color:#92400e">مشرف حضور</span>`
       : `<span class="role-badge role-user">مستخدم</span>`;
     return `<tr class="act-row">
       <td class="act-time">${dt}</td>
@@ -1821,7 +1900,8 @@ function initAuth() {
   }
 
   document.getElementById('login-ov').style.display = 'none';
-  document.getElementById('hdr-user').textContent   = (sess.role==='admin'?'👑 ':'👤 ') + sess.username;
+  const ri2 = sess.role==='admin'?'👑 ':sess.role==='attendance'?'📋 ':'👤 ';
+  document.getElementById('hdr-user').textContent = ri2 + sess.username;
   applyRoleUI(sess.role);
 }
 
@@ -2029,6 +2109,246 @@ h2{font-size:12pt;color:#92400e;margin:12pt 0 5pt;border-right:3pt solid #f59e0b
   w.document.close();
   w.focus();
   setTimeout(() => { try { w.print(); } catch(e) {} }, 700);
+}
+
+// ─────────────────────────────────────────
+// ATTENDANCE SYSTEM
+// ─────────────────────────────────────────
+function renderAttendanceTab() {
+  const sel = document.getElementById('att-rec-select');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— اختر سجل التوزيع النهائي —</option>';
+  RECORDS.forEach(rec => {
+    const dt = rec.date ? rec.date.replace(/-/g, '/') : '—';
+    const ses = rec.session ? ` | ${rec.session}` : '';
+    const opt = document.createElement('option');
+    opt.value = rec.id;
+    opt.textContent = `${rec.day} ${dt}${ses} — ${rec.stats.halls} قاعة`;
+    sel.appendChild(opt);
+  });
+  if (prev && RECORDS.find(r => r.id === parseInt(prev))) sel.value = prev;
+  renderAttendanceSheet();
+}
+
+function loadAttendanceRecord(val) {
+  _attRecId = val ? parseInt(val) : null;
+  renderAttendanceSheet();
+}
+
+function _getAttHall(recId, hallName) {
+  if (!ATTENDANCE[recId]) ATTENDANCE[recId] = {};
+  if (!ATTENDANCE[recId][hallName]) ATTENDANCE[recId][hallName] = { sup: null, monitors: [] };
+  return ATTENDANCE[recId][hallName];
+}
+
+function toggleAtt(recId, hallName, type, idx, status) {
+  const h = _getAttHall(recId, hallName);
+  if (type === 'sup') {
+    h.sup = h.sup === status ? null : status;
+  } else {
+    while (h.monitors.length <= idx) h.monitors.push(null);
+    h.monitors[idx] = h.monitors[idx] === status ? null : status;
+  }
+  lsSet(LS_ATTENDANCE, ATTENDANCE);
+  renderAttendanceSheet();
+}
+
+function markAllPresent() {
+  if (!_attRecId) return;
+  const rec = RECORDS.find(r => r.id === _attRecId); if (!rec) return;
+  for (const h of rec.halls) {
+    const ah = _getAttHall(_attRecId, h.hall);
+    if (h.supervisor) ah.sup = 'present';
+    h.monitors.forEach((m, i) => { if (m) { while (ah.monitors.length <= i) ah.monitors.push(null); ah.monitors[i] = 'present'; } });
+  }
+  lsSet(LS_ATTENDANCE, ATTENDANCE);
+  renderAttendanceSheet();
+}
+
+function renderAttendanceSheet() {
+  const sheet = document.getElementById('att-sheet');
+  const statsWrap = document.getElementById('att-stats-wrap');
+  if (!sheet) return;
+  if (!_attRecId) { sheet.innerHTML = ''; if (statsWrap) statsWrap.style.display = 'none'; return; }
+  const rec = RECORDS.find(r => r.id === _attRecId);
+  if (!rec) { sheet.innerHTML = ''; if (statsWrap) statsWrap.style.display = 'none'; return; }
+
+  let presentCount = 0, absentCount = 0, pendingCount = 0;
+
+  function getStatus(hallName, type, idx) {
+    const ah = (ATTENDANCE[_attRecId] || {})[hallName] || {};
+    return type === 'sup' ? (ah.sup || null) : ((ah.monitors || [])[idx] || null);
+  }
+
+  // Count stats
+  for (const h of rec.halls) {
+    if (h.supervisor) {
+      const s = getStatus(h.hall, 'sup', 0);
+      if (s === 'present') presentCount++; else if (s === 'absent') absentCount++; else pendingCount++;
+    }
+    h.monitors.forEach((m, i) => {
+      if (m) {
+        const s = getStatus(h.hall, 'mon', i);
+        if (s === 'present') presentCount++; else if (s === 'absent') absentCount++; else pendingCount++;
+      }
+    });
+  }
+
+  // Update stats bar
+  if (statsWrap) statsWrap.style.display = '';
+  document.getElementById('att-cnt-p').textContent = presentCount;
+  document.getElementById('att-cnt-a').textContent = absentCount;
+  document.getElementById('att-cnt-n').textContent = pendingCount;
+
+  const tqSet = new Set(rec.takmiliHalls || []);
+
+  function attBtns(hallName, type, idx, name) {
+    const status = getStatus(hallName, type, idx);
+    const pOn = status === 'present' ? ' on' : '';
+    const aOn = status === 'absent'  ? ' on' : '';
+    return `<div class="att-btns">
+      <button class="att-btn-p${pOn}" onclick="toggleAtt(${_attRecId},'${escHtml(hallName)}','${type}',${idx},'present')" title="حاضر">✔</button>
+      <button class="att-btn-a${aOn}" onclick="toggleAtt(${_attRecId},'${escHtml(hallName)}','${type}',${idx},'absent')"  title="غائب">✗</button>
+    </div>`;
+  }
+
+  let html = '';
+  for (const h of rec.halls) {
+    const isTq = tqSet.has(h.hall);
+    const tqMark = isTq ? `<span class="tq-label">تقويمي</span>` : '';
+    let pTally = 0, aTally = 0;
+    if (h.supervisor) { const s = getStatus(h.hall, 'sup', 0); if (s==='present') pTally++; else if (s==='absent') aTally++; }
+    h.monitors.forEach((m, i) => { if (m) { const s = getStatus(h.hall, 'mon', i); if (s==='present') pTally++; else if (s==='absent') aTally++; } });
+
+    html += `<div class="att-hall${isTq?' hall-block tq':''}">
+      <div class="att-hall-hdr">
+        <span class="att-hall-title">🏛 ${tqMark}${h.hall}</span>
+        <span class="att-hall-tally">
+          <span style="color:#15803d;font-weight:800">✔ ${pTally}</span>
+          <span style="color:#b91c1c;font-weight:800">✗ ${aTally}</span>
+        </span>
+      </div>
+      <div class="att-hall-body">`;
+
+    if (h.supervisor) {
+      html += `<div class="att-row">
+        <span class="att-role-tag rs">مشرف</span>
+        <span class="att-name">${h.supervisor}</span>
+        ${attBtns(h.hall, 'sup', 0, h.supervisor)}
+      </div>`;
+    }
+    h.monitors.forEach((m, i) => {
+      if (!m) return;
+      html += `<div class="att-row">
+        <span class="att-role-tag rm">مراقب ${i+1}</span>
+        <span class="att-name">${m}</span>
+        ${attBtns(h.hall, 'mon', i, m)}
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  }
+
+  sheet.innerHTML = html;
+}
+
+function exportAttendancePDF() {
+  if (!_attRecId) return;
+  const rec = RECORDS.find(r => r.id === _attRecId); if (!rec) return;
+  const att = ATTENDANCE[_attRecId] || {};
+  const day = rec.day, date = (rec.date||'').replace(/-/g,'/'), ses = rec.session||'';
+
+  const present = [], absent = [], pending = [];
+  for (const h of rec.halls) {
+    const ah = att[h.hall] || {};
+    function addPerson(name, role, status) {
+      const obj = {hall: h.hall, role, name};
+      if (status === 'present') present.push(obj);
+      else if (status === 'absent') absent.push(obj);
+      else pending.push(obj);
+    }
+    if (h.supervisor) addPerson(h.supervisor, 'مشرف القاعة', ah.sup || null);
+    h.monitors.forEach((m, i) => { if (m) addPerson(m, 'مراقب '+(i+1), (ah.monitors||[])[i] || null); });
+  }
+
+  const th = 'background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;border:1pt solid #374151;font-weight:700;font-size:10pt';
+  function mkRows(arr, bg1, bg2) {
+    return arr.map((p, i) => {
+      const bg = i%2===0 ? bg1 : bg2;
+      return `<tr><td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;text-align:center">${i+1}</td>
+        <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;font-weight:700">${p.name}</td>
+        <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt">${p.hall}</td>
+        <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt">${p.role}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  const sesLine = ses ? `&nbsp;&nbsp; الدورة: <strong>${ses}</strong>` : '';
+  const now = new Date().toLocaleString('ar-IQ');
+
+  const htmlStr = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+<title>كشف حضور — ${day} ${date}</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,'Traditional Arabic',Tahoma,sans-serif;direction:rtl;color:#111;font-size:11pt}
+table{border-collapse:collapse;width:100%;margin-bottom:14pt}
+h1{text-align:center;font-size:15pt;color:#0d1b6e;margin-bottom:3pt}
+h2{font-size:13pt;margin:12pt 0 5pt;padding-right:6pt;border-right:4pt solid}
+.uni{text-align:center;font-size:14pt;color:#1e3a8a;font-weight:700;margin-bottom:2pt}
+.info{text-align:center;font-size:10pt;margin:7pt 0;padding:5pt 0;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
+.footer{text-align:center;font-size:8pt;color:#9ca3af;margin-top:12pt;border-top:1px solid #e5e7eb;padding-top:5pt}
+.sum{display:flex;gap:20pt;justify-content:center;margin:8pt 0;font-size:11pt}
+.sp{background:#f0fdf4;color:#15803d;border-radius:5pt;padding:4pt 14pt;font-weight:800;border:1pt solid #86efac}
+.sa{background:#fff1f2;color:#b91c1c;border-radius:5pt;padding:4pt 14pt;font-weight:800;border:1pt solid #fca5a5}
+.sn{background:#f8fafc;color:#64748b;border-radius:5pt;padding:4pt 14pt;font-weight:800;border:1pt solid #e2e8f0}
+@media screen{.bar{position:fixed;top:0;left:0;right:0;background:#0d1b6e;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:14px;z-index:999;flex-wrap:wrap}.content{margin-top:58px;padding:16px}}
+@media print{.bar{display:none!important}.content{margin-top:0;padding:0}body{padding:1cm}}
+</style></head><body>
+<div class="bar">
+  <button onclick="window.print()" style="background:#fff;color:#0d1b6e;border:none;padding:9px 26px;border-radius:7px;font-weight:800;cursor:pointer;font-size:14px;font-family:inherit">🖨 طباعة / حفظ PDF</button>
+  <span style="color:#fff;font-size:12px">اختر <strong>Save as PDF</strong> من قائمة الطابعات</span>
+  <button onclick="window.close()" style="background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.35);padding:8px 18px;border-radius:7px;cursor:pointer;font-size:12px;font-family:inherit">✕ إغلاق</button>
+</div>
+<div class="content">
+  <div class="uni">جـامـعـة الـفـارابـي</div>
+  <h1>كشف حضور مراقبي الامتحانات</h1>
+  <div class="info">اليوم: <strong>${day}</strong> &nbsp;&nbsp; التاريخ: <strong>${date}</strong>${sesLine}</div>
+  <div class="sum">
+    <span class="sp">✔ الحاضرون: ${present.length}</span>
+    <span class="sa">✗ الغائبون: ${absent.length}</span>
+    ${pending.length ? `<span class="sn">⬜ غير محدد: ${pending.length}</span>` : ''}
+  </div>
+  ${present.length ? `<h2 style="color:#15803d;border-color:#86efac">✔ الحاضرون (${present.length})</h2>
+  <table><thead><tr>
+    <th style="${th};width:6%;text-align:center">#</th>
+    <th style="${th};width:38%">الاسم</th>
+    <th style="${th};width:26%">القاعة</th>
+    <th style="${th};width:30%">الدور</th>
+  </tr></thead><tbody>${mkRows(present,'#f0fdf4','#ffffff')}</tbody></table>` : ''}
+  ${absent.length ? `<h2 style="color:#b91c1c;border-color:#fca5a5">✗ الغائبون (${absent.length})</h2>
+  <table><thead><tr>
+    <th style="${th};width:6%;text-align:center">#</th>
+    <th style="${th};width:38%">الاسم</th>
+    <th style="${th};width:26%">القاعة</th>
+    <th style="${th};width:30%">الدور</th>
+  </tr></thead><tbody>${mkRows(absent,'#fff1f2','#ffffff')}</tbody></table>` : ''}
+  ${pending.length ? `<h2 style="color:#64748b;border-color:#e2e8f0">⬜ لم يُسجَّل حضورهم (${pending.length})</h2>
+  <table><thead><tr>
+    <th style="${th};width:6%;text-align:center">#</th>
+    <th style="${th};width:38%">الاسم</th>
+    <th style="${th};width:26%">القاعة</th>
+    <th style="${th};width:30%">الدور</th>
+  </tr></thead><tbody>${mkRows(pending,'#f8fafc','#ffffff')}</tbody></table>` : ''}
+  <div class="footer">تم الإنشاء: ${now} | جامعة الفارابي — لجنة الامتحانات</div>
+</div></body></html>`;
+
+  const w = window.open('', '_blank', 'width=1050,height=780,scrollbars=yes,resizable=yes');
+  if (!w) { alert('يرجى السماح بالنوافذ المنبثقة ثم كرر العملية'); return; }
+  w.document.write(htmlStr);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { try { w.print(); } catch(e) {} }, 700);
+  logActivity('تصدير كشف حضور', `اليوم: ${day} | حاضر: ${present.length} | غائب: ${absent.length}`);
 }
 
 // ─────────────────────────────────────────
