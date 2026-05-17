@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>نظام توزيع مراقبي الامتحانات — جامعة الفارابي 2025/2026</title>
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
@@ -350,8 +351,9 @@ tr:hover td{background:#eef2ff}
     <!-- Action buttons -->
     <div style="text-align:center;margin-bottom:13px;display:flex;gap:9px;justify-content:center;flex-wrap:wrap">
       <button class="btn bp" style="font-size:14px;padding:10px 28px" onclick="runDistribution()">▶ تشغيل التوزيع</button>
-      <button class="btn bg"    id="btn-export" style="display:none;padding:10px 20px" onclick="exportWord()">📄 تصدير Word</button>
-      <button class="btn bsave" id="btn-save"   style="display:none;padding:10px 20px" onclick="saveCurrentRecord()">💾 حفظ في السجلات</button>
+      <button class="btn bg"    id="btn-export"     style="display:none;padding:10px 20px" onclick="exportWord()">📄 تصدير DOCX</button>
+      <button class="btn bo"    id="btn-export-pdf" style="display:none;padding:10px 20px" onclick="exportPDF()">📋 تصدير PDF</button>
+      <button class="btn bsave" id="btn-save"       style="display:none;padding:10px 20px" onclick="saveCurrentRecord()">💾 حفظ في السجلات</button>
     </div>
     <div id="save-msg" style="text-align:center;margin-bottom:8px"></div>
     <!-- Results -->
@@ -496,6 +498,19 @@ tr:hover td{background:#eef2ff}
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn" onclick="closeResetPwModal()">إلغاء</button>
       <button class="btn bp" onclick="doResetPw()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EDIT HALL MODAL ══ -->
+<div class="auth-modal-ov" id="edit-hall-modal">
+  <div class="auth-modal" style="max-width:520px;width:94vw;max-height:88vh;overflow-y:auto">
+    <h3 style="margin-bottom:14px">✏ تعديل توزيع القاعة: <span id="ehm-title" style="color:#0d1b6e"></span></h3>
+    <div id="ehm-fields"></div>
+    <div class="auth-msg" id="ehm-msg"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <button class="btn" onclick="closeEditHallModal()">إلغاء</button>
+      <button class="btn bp" onclick="saveEditHall()">✔ حفظ التعديل</button>
     </div>
   </div>
 </div>
@@ -869,6 +884,7 @@ function runDistribution(){
   document.getElementById('s-remain').textContent=lastRemaining.length;
   document.getElementById('s-halls').textContent=sel.length;
   document.getElementById('btn-export').style.display='';
+  document.getElementById('btn-export-pdf').style.display='';
   document.getElementById('btn-save').style.display='';
   document.getElementById('save-msg').innerHTML='';
   renderResults(lastDist,lastReserve,lastRemaining,day);
@@ -977,10 +993,14 @@ function personLine(p){
 function renderResults(dist,reserve,remaining,day){
   let html=`<div class="alert aok">✔ اكتمل التوزيع ليوم <strong>${day}</strong> — ${Object.keys(dist).length} قاعة &nbsp;|&nbsp; احتياط: ${reserve.length}</div>`;
   for(const[hname,d]of Object.entries(dist)){
-    html+=`<div class="hall-block">
+    html+=`<div class="hall-block" data-hname="${escHtml(hname)}">
       <div class="hall-hdr">
         <span class="hall-title">🏛 ${hname}</span>
-        <span class="hall-meta">مطلوب: ${d.hall.monitors_needed}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="hall-meta">مطلوب: ${d.hall.monitors_needed}</span>
+          <button class="btn" style="font-size:11px;padding:3px 9px;background:#fef9c3;border-color:#fcd34d;color:#713f12"
+            onclick="openEditHallModal(this.closest('[data-hname]').dataset.hname)">✏ تعديل</button>
+        </div>
       </div>
       <div class="hall-body">
         <div class="arow"><span class="rtag rs">مشرف</span><span>${personLine(d.supervisor)}</span></div>`;
@@ -1098,7 +1118,8 @@ function renderRecordsTab(){
         </div>
         <div class="rec-actions">
           <button class="btn" style="font-size:11px;padding:3px 9px" onclick="toggleRecBody(${rec.id})">عرض</button>
-          <button class="btn bg" style="font-size:11px;padding:3px 9px" onclick="exportRecordWord(${rec.id})">📄 Word</button>
+          <button class="btn bg" style="font-size:11px;padding:3px 9px" onclick="exportRecordWord(${rec.id})">📄 DOCX</button>
+          <button class="btn bo" style="font-size:11px;padding:3px 9px" onclick="exportRecordPDF(${rec.id})">📋 PDF</button>
           <button class="btn br" style="font-size:11px;padding:3px 9px" onclick="deleteRecord(${rec.id})">🗑</button>
         </div>
       </div>
@@ -1279,7 +1300,7 @@ ${reserve.length?`<h2>قائمة الاحتياط (${reserve.length} شخص)</h2
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url;
   const ds=(rawDate||new Date().toISOString().slice(0,10)).replace(/\//g,'-');
-  a.download=`توزيع_${day}_${ds}.doc`;
+  a.download=`توزيع_${day}_${ds}.docx`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),3000);
 }
@@ -1715,6 +1736,198 @@ function initAuth() {
   document.getElementById('login-ov').style.display = 'none';
   document.getElementById('hdr-user').textContent   = (sess.role==='admin'?'👑 ':'👤 ') + sess.username;
   applyRoleUI(sess.role);
+}
+
+// ─────────────────────────────────────────
+// EDIT HALL MODAL
+// ─────────────────────────────────────────
+let _editHall = null;
+
+function openEditHallModal(hname) {
+  if (!lastDist || !lastDist[hname]) return;
+  _editHall = hname;
+  const d = lastDist[hname];
+  document.getElementById('ehm-title').textContent = hname;
+  document.getElementById('ehm-msg').textContent = '';
+
+  // Build supervisor dropdown (PhDs only)
+  const supOpts = `<option value="">— لا يوجد مشرف —</option>` +
+    STAFF.filter(s => s.has_phd).map(s =>
+      `<option value="${s.id}"${d.supervisor && d.supervisor.id === s.id ? ' selected' : ''}>${s.name}${s.dept ? ' — ' + s.dept : ''}</option>`
+    ).join('');
+
+  let html = `<div style="margin-bottom:10px">
+    <label class="auth-field-lbl">👤 مشرف القاعة</label>
+    <select class="auth-field" id="ehm-sup" style="margin-bottom:0">${supOpts}</select>
+  </div>`;
+
+  d.monitors.forEach((m, i) => {
+    const monOpts = `<option value="">— لا يوجد —</option>` +
+      STAFF.map(s =>
+        `<option value="${s.id}"${m && m.id === s.id ? ' selected' : ''}>${s.name}${s.dept ? ' — ' + s.dept : ''}</option>`
+      ).join('');
+    html += `<div style="margin-bottom:10px">
+      <label class="auth-field-lbl">مراقب ${i + 1}</label>
+      <select class="auth-field" id="ehm-mon-${i}" style="margin-bottom:0">${monOpts}</select>
+    </div>`;
+  });
+
+  document.getElementById('ehm-fields').innerHTML = html;
+  document.getElementById('edit-hall-modal').classList.add('show');
+}
+
+function closeEditHallModal() {
+  document.getElementById('edit-hall-modal').classList.remove('show');
+  _editHall = null;
+}
+
+function saveEditHall() {
+  if (!_editHall || !lastDist[_editHall]) return;
+  const d = lastDist[_editHall];
+
+  const supId = document.getElementById('ehm-sup').value;
+  d.supervisor = supId ? (STAFF.find(s => s.id === parseInt(supId)) || null) : null;
+
+  d.monitors = d.monitors.map((_, i) => {
+    const mid = document.getElementById('ehm-mon-' + i).value;
+    return mid ? (STAFF.find(s => s.id === parseInt(mid)) || null) : null;
+  });
+
+  // Recalculate remaining & reserve
+  const day = document.getElementById('sel-day').value;
+  const ec  = document.getElementById('chk-excl-comm').checked;
+  const allRem = getAllRemaining(day, lastDist, ec);
+  const target = parseInt(document.getElementById('reserve-count').value) || 30;
+  lastReserve   = allRem.slice(0, Math.min(target, allRem.length));
+  lastRemaining = allRem.slice(lastReserve.length);
+
+  let assigned = 0;
+  for (const hd of Object.values(lastDist)) {
+    if (hd.supervisor) assigned++;
+    assigned += hd.monitors.filter(m => m).length;
+  }
+  document.getElementById('s-assigned').textContent = assigned;
+  document.getElementById('s-reserve').textContent  = lastReserve.length;
+  document.getElementById('s-remain').textContent   = lastRemaining.length;
+
+  renderResults(lastDist, lastReserve, lastRemaining, day);
+  logActivity('تعديل يدوي', `القاعة: ${_editHall}`);
+  closeEditHallModal();
+}
+
+// ─────────────────────────────────────────
+// PDF EXPORT
+// ─────────────────────────────────────────
+function exportPDF() {
+  if (!lastDist) return;
+  const day     = document.getElementById('sel-day').value;
+  const rawDate = document.getElementById('sel-date').value;
+  const date    = rawDate || new Date().toLocaleDateString('ar-IQ');
+  const session = document.getElementById('sel-session').value;
+  logActivity('تصدير PDF', `اليوم: ${day} | التاريخ: ${date}`);
+  _genPDF(lastDist, lastReserve, day, date, session, rawDate);
+}
+
+function exportRecordPDF(id) {
+  const rec = RECORDS.find(r => r.id === id); if (!rec) return;
+  const dist = {};
+  for (const h of rec.halls) {
+    dist[h.hall] = {
+      supervisor: h.supervisor ? {name:h.supervisor, title_code:'other', mtype:'', gender:'male', dept:''} : null,
+      monitors:   h.monitors.map(m => m ? {name:m, title_code:'other', mtype:'', gender:'male', dept:''} : null),
+      hall:       {name:h.hall, monitors_needed:h.needed}
+    };
+    if (h.supervisor) { const rs = STAFF.find(s => s.name === h.supervisor); if (rs) dist[h.hall].supervisor = rs; }
+    dist[h.hall].monitors = h.monitors.map(m => {
+      if (!m) return null;
+      return STAFF.find(s => s.name === m) || {name:m, title_code:'other', mtype:'', gender:'male', dept:''};
+    });
+  }
+  const reserve = rec.reserve.map(n => STAFF.find(s => s.name === n) || {name:n, title_code:'other', mtype:'', gender:'male', dept:''});
+  const date = rec.date ? rec.date.replace(/-/g, '/') : '';
+  _genPDF(dist, reserve, rec.day, date, rec.session || '', rec.date || '');
+}
+
+function _genPDF(dist, reserve, day, date, session, rawDate) {
+  const th  = 'background:#1E3A8A;color:#fff;padding:5pt 7pt;text-align:right;border:1pt solid #374151;font-size:9pt;font-weight:700';
+  const tdB = bg => `background:${bg};border:1pt solid #9ca3af;padding:5pt 7pt;font-size:9pt`;
+  const sig = 'border:1pt solid #9ca3af;min-width:60pt;background:#fafafa;padding:5pt';
+
+  let distRows = '', ri = 0;
+  for (const [hname, d] of Object.entries(dist)) {
+    const tot = 1 + d.monitors.length;
+    const bg  = ri % 2 === 0 ? '#EEF2FF' : '#FFFFFF';
+    const supName = d.supervisor ? d.supervisor.name : '—';
+    distRows += `<tr>
+      <td rowspan="${tot}" style="text-align:center;font-weight:800;font-size:9pt;background:#dbeafe;border:1pt solid #6b7280;vertical-align:middle;padding:5pt">${hname}</td>
+      <td style="${tdB(bg)}">مشرف القاعة</td>
+      <td style="${tdB(bg)}">${supName}</td>
+      <td style="${sig}"></td>
+    </tr>`;
+    d.monitors.forEach((m, i) => {
+      distRows += `<tr>
+        <td style="${tdB(bg)}">مراقب ${i + 1}</td>
+        <td style="${tdB(bg)}">${m ? m.name : '—'}</td>
+        <td style="${sig}"></td>
+      </tr>`;
+    });
+    ri++;
+  }
+
+  let resRows = '';
+  reserve.forEach((s, i) => {
+    const bg = i % 2 === 0 ? '#FFF7ED' : '#FFFFFF';
+    resRows += `<tr>
+      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;text-align:center;font-size:9pt">${i + 1}</td>
+      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;font-size:9pt">${s.name}</td>
+      <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;font-size:9pt">${s.dept || ''}</td>
+      <td style="border:1pt solid #d1d5db;min-width:60pt;background:#fafafa;padding:5pt"></td>
+    </tr>`;
+  });
+
+  const sesLine = session ? `&nbsp;&nbsp; الدورة: <strong>${session}</strong>` : '';
+  const now     = new Date().toLocaleString('ar-IQ');
+
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;left:-9999px;top:0;width:19cm;background:#fff;direction:rtl;font-family:Arial,Tahoma,sans-serif;padding:0.6cm;font-size:10pt;color:#111';
+  el.innerHTML = `
+    <div style="text-align:center;font-size:13pt;color:#1e3a8a;font-weight:700;margin-bottom:3pt">جـامـعـة الـفـارابـي</div>
+    <h1 style="text-align:center;font-size:14pt;color:#0d1b6e;margin:0 0 5pt">جدول توزيع مراقبي الامتحانات النهائية</h1>
+    <div style="text-align:center;font-size:10pt;margin:6pt 0;padding:4pt 0;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb">
+      اليوم: <strong>${day}</strong> &nbsp;&nbsp; التاريخ: <strong>${date}</strong>${sesLine}
+    </div>
+    <table style="border-collapse:collapse;width:100%;margin-bottom:10pt">
+      <thead><tr>
+        <th style="${th};width:11%;text-align:center">القاعة</th>
+        <th style="${th};width:19%">الدور</th>
+        <th style="${th};width:42%">الاسم</th>
+        <th style="${th};width:28%;text-align:center">التوقيع</th>
+      </tr></thead>
+      <tbody>${distRows}</tbody>
+    </table>
+    ${reserve.length ? `<h2 style="font-size:11pt;color:#92400e;margin:10pt 0 5pt;border-right:3pt solid #f59e0b;padding-right:6pt">قائمة الاحتياط (${reserve.length} شخص)</h2>
+    <table style="border-collapse:collapse;width:100%;margin-bottom:10pt">
+      <thead><tr>
+        <th style="${th};width:7%;text-align:center">#</th>
+        <th style="${th};width:40%">الاسم</th>
+        <th style="${th};width:25%">القسم</th>
+        <th style="${th};width:28%;text-align:center">التوقيع</th>
+      </tr></thead>
+      <tbody>${resRows}</tbody>
+    </table>` : ''}
+    <div style="text-align:center;font-size:8pt;color:#9ca3af;margin-top:10pt;border-top:1px solid #e5e7eb;padding-top:4pt">
+      تم الإنشاء: ${now} | القاعات: ${Object.keys(dist).length} | الاحتياط: ${reserve.length} | جامعة الفارابي — لجنة الامتحانات
+    </div>`;
+
+  document.body.appendChild(el);
+  const ds = (rawDate || new Date().toISOString().slice(0, 10)).replace(/\//g, '-');
+  html2pdf().from(el).set({
+    margin:      [0.5, 0.5, 0.5, 0.5],
+    filename:    `توزيع_${day}_${ds}.pdf`,
+    image:       { type: 'jpeg', quality: 0.97 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF:       { unit: 'cm', format: 'a4', orientation: 'portrait' }
+  }).save().then(() => document.body.removeChild(el));
 }
 
 // ─────────────────────────────────────────
