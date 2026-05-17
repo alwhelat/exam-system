@@ -407,6 +407,15 @@ tr:hover td{background:#eef2ff}
       <select id="staff-filt-gender" onchange="renderStaffTable()">
         <option value="">الجنسان</option><option value="male">ذكر</option><option value="female">أنثى</option>
       </select>
+      <select id="staff-filt-pos" onchange="renderStaffTable()">
+        <option value="">كل المناصب</option>
+        <option value="تدريسي">تدريسي / تدريسية</option>
+        <option value="مقرر قسم">مقرر قسم</option>
+        <option value="رئيس قسم">رئيس قسم</option>
+        <option value="مقرر كلية">مقرر كلية</option>
+        <option value="معاون عميد">معاون عميد</option>
+        <option value="عميد">عميد</option>
+      </select>
       <select id="staff-sort" onchange="renderStaffTable()">
         <option value="name">ترتيب: الاسم</option>
         <option value="count_desc">الأكثر مراقبةً أولاً</option>
@@ -418,7 +427,7 @@ tr:hover td{background:#eef2ff}
         <thead>
           <tr>
             <th>#</th><th>الاسم</th><th>الكلية</th><th>القسم</th><th>اللقب</th><th>النوع</th><th>الجنس</th>
-            <th>أيام الدوام</th><th>لجنة؟</th>
+            <th>المنصب</th><th>أيام الدوام</th><th>لجنة؟</th>
             <th style="background:#fef3c7;color:#92400e">مرات المراقبة</th>
             <th style="background:#fef3c7;color:#92400e">آخر مراقبة</th>
             <th>الهاتف</th>
@@ -611,8 +620,17 @@ let FB_PLATFORM_LOCKED = false;
 let FB_ACTIVITY        = [];
 
 async function loadFirebaseData() {
+  // ── Load all docs in parallel ──
+  const [uSnap, pSnap, aSnap, rSnap, hSnap, attSnap] = await Promise.all([
+    db.collection('system').doc('users').get(),
+    db.collection('system').doc('platform').get(),
+    db.collection('system').doc('activity').get(),
+    db.collection('system').doc('records').get(),
+    db.collection('system').doc('history').get(),
+    db.collection('system').doc('attendance').get(),
+  ]);
+
   // ── Users ──
-  const uSnap = await db.collection('system').doc('users').get();
   if (uSnap.exists) {
     FB_USERS = uSnap.data().list || [];
   } else {
@@ -621,12 +639,28 @@ async function loadFirebaseData() {
   }
 
   // ── Platform lock ──
-  const pSnap = await db.collection('system').doc('platform').get();
   FB_PLATFORM_LOCKED = pSnap.exists ? (pSnap.data().locked || false) : false;
 
   // ── Activity log ──
-  const aSnap = await db.collection('system').doc('activity').get();
   FB_ACTIVITY = aSnap.exists ? (aSnap.data().log || []) : [];
+
+  // ── Records (shared across all users) ──
+  if (rSnap.exists && rSnap.data().list) {
+    RECORDS = rSnap.data().list;
+    lsSet(LS_RECORDS, RECORDS);
+  }
+
+  // ── History ──
+  if (hSnap.exists && hSnap.data().data) {
+    HISTORY = hSnap.data().data;
+    lsSet(LS_HISTORY, HISTORY);
+  }
+
+  // ── Attendance ──
+  if (attSnap.exists && attSnap.data().data) {
+    ATTENDANCE = attSnap.data().data;
+    lsSet(LS_ATTENDANCE, ATTENDANCE);
+  }
 
   // ── Real-time listeners ──
   db.collection('system').doc('users').onSnapshot(snap => {
@@ -652,6 +686,27 @@ async function loadFirebaseData() {
     const ap = document.getElementById('tab-admin');
     if (ap && ap.classList.contains('on')) renderActivityLog();
   });
+
+  // ── Records: real-time sync so attendance user sees new records instantly ──
+  db.collection('system').doc('records').onSnapshot(snap => {
+    if (!snap.exists) return;
+    RECORDS = snap.data().list || [];
+    lsSet(LS_RECORDS, RECORDS);
+    updateRecordsBadge();
+    const rp = document.getElementById('tab-records');
+    if (rp && rp.classList.contains('on')) renderRecordsTab();
+    const ap2 = document.getElementById('tab-attendance');
+    if (ap2 && ap2.classList.contains('on')) renderAttendanceTab();
+  });
+
+  // ── Attendance: real-time sync across devices ──
+  db.collection('system').doc('attendance').onSnapshot(snap => {
+    if (!snap.exists) return;
+    ATTENDANCE = snap.data().data || {};
+    lsSet(LS_ATTENDANCE, ATTENDANCE);
+    const ap2 = document.getElementById('tab-attendance');
+    if (ap2 && ap2.classList.contains('on')) renderAttendanceSheet();
+  });
 }
 
 function fbSaveUsers(users) {
@@ -665,6 +720,15 @@ function fbSaveActivity(act) {
 function fbSavePlatformLocked(val) {
   FB_PLATFORM_LOCKED = val;
   db.collection('system').doc('platform').set({ locked: val }).catch(e => console.error('fbSavePlatLocked', e));
+}
+function fbSaveRecords(recs) {
+  db.collection('system').doc('records').set({ list: recs }).catch(e => console.error('fbSaveRecords', e));
+}
+function fbSaveHistory(hist) {
+  db.collection('system').doc('history').set({ data: hist }).catch(e => console.error('fbSaveHistory', e));
+}
+function fbSaveAttendance(att) {
+  db.collection('system').doc('attendance').set({ data: att }).catch(e => console.error('fbSaveAttendance', e));
 }
 
 // ─────────────────────────────────────────
@@ -708,7 +772,10 @@ function lsGet(key, def) {
 function lsSet(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
 }
-function syncStorage() { lsSet(LS_RECORDS, RECORDS); lsSet(LS_HISTORY, HISTORY); }
+function syncStorage() {
+  lsSet(LS_RECORDS, RECORDS); lsSet(LS_HISTORY, HISTORY);
+  fbSaveRecords(RECORDS); fbSaveHistory(HISTORY);
+}
 
 // ─────────────────────────────────────────
 // HISTORY HELPERS
@@ -1456,12 +1523,18 @@ function renderStaffTable(){
   const dept=document.getElementById('staff-filt-dept').value;
   const type=document.getElementById('staff-filt-type').value;
   const gender=document.getElementById('staff-filt-gender').value;
+  const posF=document.getElementById('staff-filt-pos').value;
   const sort=document.getElementById('staff-sort').value;
   let filtered=STAFF.filter(s=>{
     if(q&&!s.name.toLowerCase().includes(q)&&!s.dept.toLowerCase().includes(q)) return false;
     if(dept&&s.dept!==dept) return false;
     if(type&&s.mtype!==type) return false;
     if(gender&&s.gender!==gender) return false;
+    if(posF){
+      // "تدريسي" covers both تدريسي and تدريسية
+      if(posF==='تدريسي'&&s.pos!=='تدريسي'&&s.pos!=='تدريسية') return false;
+      else if(posF!=='تدريسي'&&s.pos!==posF) return false;
+    }
     return true;
   });
   if(sort==='count_desc') filtered.sort((a,b)=>getHist(b.name).count-getHist(a.name).count);
@@ -1486,6 +1559,7 @@ function renderStaffTable(){
       <td>${s.college}</td><td>${s.dept}</td><td>${lbl}</td>
       <td><span class="bx ${tCls}">${s.mtype}</span></td>
       <td>${g}</td>
+      <td style="font-size:11px;white-space:nowrap">${s.pos||'—'}</td>
       <td style="font-size:11px">${s.days.join('، ')}</td>
       <td>${s.in_committee?'✔':''} ${comm}</td>
       <td style="${countStyle};text-align:center">${h.count}${tqCell}</td>
@@ -2151,6 +2225,7 @@ function toggleAtt(recId, hallName, type, idx, status) {
     h.monitors[idx] = h.monitors[idx] === status ? null : status;
   }
   lsSet(LS_ATTENDANCE, ATTENDANCE);
+  fbSaveAttendance(ATTENDANCE);
   renderAttendanceSheet();
 }
 
@@ -2163,6 +2238,7 @@ function markAllPresent() {
     h.monitors.forEach((m, i) => { if (m) { while (ah.monitors.length <= i) ah.monitors.push(null); ah.monitors[i] = 'present'; } });
   }
   lsSet(LS_ATTENDANCE, ATTENDANCE);
+  fbSaveAttendance(ATTENDANCE);
   renderAttendanceSheet();
 }
 
@@ -2397,6 +2473,9 @@ initLogo();
     FB_USERS = lu || [{ id:1, username:'admin', pw_hash:hashPw('admin'), role:'admin', active:true, createdAt:new Date().toISOString() }];
     FB_PLATFORM_LOCKED = lsGet(LS_PLAT_LOCKED, false);
     FB_ACTIVITY = lsGet(LS_ACTIVITY, []);
+    RECORDS    = lsGet(LS_RECORDS, []);
+    HISTORY    = lsGet(LS_HISTORY, {});
+    ATTENDANCE = lsGet(LS_ATTENDANCE, {});
   }
   document.getElementById('fb-loading').style.display = 'none';
   initAuth();
