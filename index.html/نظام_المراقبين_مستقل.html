@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>نظام توزيع مراقبي الامتحانات — جامعة الفارابي 2025/2026</title>
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
@@ -1253,9 +1254,7 @@ function generateWordDoc(dist,reserve,day,date,session,rawDate){
   });
   const now=new Date().toLocaleString('ar-IQ');
   const sesLine=session?`&nbsp;&nbsp;&nbsp;&nbsp;الدورة: <strong>${session}</strong>`:'';
-  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:w="urn:schemas-microsoft-com:office:word"
- xmlns="http://www.w3.org/TR/REC-html40">
+  const html=`<!DOCTYPE html><html dir="rtl" lang="ar">
 <head><meta charset="UTF-8"><title>جدول توزيع المراقبين</title>
 <style>
   body{font-family:Arial,'Traditional Arabic';direction:rtl;margin:2cm;font-size:11pt}
@@ -1296,13 +1295,20 @@ ${reserve.length?`<h2>قائمة الاحتياط (${reserve.length} شخص)</h2
   تم الإنشاء: ${now} &nbsp;|&nbsp; القاعات: ${Object.keys(dist).length}
   &nbsp;|&nbsp; الاحتياط: ${reserve.length} &nbsp;|&nbsp; جامعة الفارابي — لجنة الامتحانات
 </div></body></html>`;
-  const blob=new Blob(['﻿'+html],{type:'application/msword'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url;
   const ds=(rawDate||new Date().toISOString().slice(0,10)).replace(/\//g,'-');
-  a.download=`توزيع_${day}_${ds}.docx`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),3000);
+  try {
+    const blob = typeof htmlDocx !== 'undefined'
+      ? htmlDocx.asBlob(html)
+      : new Blob([html], {type:'application/msword'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url;
+    a.download = `توزيع_${day}_${ds}.docx`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 3000);
+  } catch(e) {
+    alert('حدث خطأ أثناء إنشاء ملف DOCX: ' + e.message);
+    console.error(e);
+  }
 }
 
 // ─────────────────────────────────────────
@@ -1888,8 +1894,18 @@ function _genPDF(dist, reserve, day, date, session, rawDate) {
   const sesLine = session ? `&nbsp;&nbsp; الدورة: <strong>${session}</strong>` : '';
   const now     = new Date().toLocaleString('ar-IQ');
 
+  // Loading overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(13,27,110,.82);z-index:99999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `<div style="background:#fff;padding:28px 38px;border-radius:14px;text-align:center;direction:rtl;font-family:Arial,Tahoma,sans-serif">
+    <div style="font-size:32px;margin-bottom:10px">📋</div>
+    <div style="font-size:15px;font-weight:800;color:#0d1b6e;margin-bottom:6px">جاري إنشاء PDF...</div>
+    <div style="font-size:12px;color:#888">الرجاء الانتظار بضع ثوانٍ</div>
+  </div>`;
+  document.body.appendChild(overlay);
+
   const el = document.createElement('div');
-  el.style.cssText = 'position:fixed;left:-9999px;top:0;width:19cm;background:#fff;direction:rtl;font-family:Arial,Tahoma,sans-serif;padding:0.6cm;font-size:10pt;color:#111';
+  el.style.cssText = 'position:absolute;top:0;right:0;width:750px;background:#fff;direction:rtl;font-family:Arial,Tahoma,sans-serif;padding:25px 30px;font-size:11pt;color:#111;z-index:-1';
   el.innerHTML = `
     <div style="text-align:center;font-size:13pt;color:#1e3a8a;font-weight:700;margin-bottom:3pt">جـامـعـة الـفـارابـي</div>
     <h1 style="text-align:center;font-size:14pt;color:#0d1b6e;margin:0 0 5pt">جدول توزيع مراقبي الامتحانات النهائية</h1>
@@ -1921,13 +1937,22 @@ function _genPDF(dist, reserve, day, date, session, rawDate) {
 
   document.body.appendChild(el);
   const ds = (rawDate || new Date().toISOString().slice(0, 10)).replace(/\//g, '-');
-  html2pdf().from(el).set({
-    margin:      [0.5, 0.5, 0.5, 0.5],
-    filename:    `توزيع_${day}_${ds}.pdf`,
-    image:       { type: 'jpeg', quality: 0.97 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF:       { unit: 'cm', format: 'a4', orientation: 'portrait' }
-  }).save().then(() => document.body.removeChild(el));
+
+  setTimeout(() => {
+    html2pdf().from(el).set({
+      margin:      [8, 8, 8, 8],
+      filename:    `توزيع_${day}_${ds}.pdf`,
+      image:       { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, allowTaint: true, scrollX: 0, scrollY: 0 },
+      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).save()
+      .then(() => { document.body.removeChild(el); document.body.removeChild(overlay); })
+      .catch(err => {
+        document.body.removeChild(el); document.body.removeChild(overlay);
+        console.error('PDF error:', err);
+        alert('تعذّر إنشاء PDF. جرّب متصفح Chrome أو Edge، أو تأكد من اتصالك بالإنترنت.');
+      });
+  }, 200);
 }
 
 // ─────────────────────────────────────────
