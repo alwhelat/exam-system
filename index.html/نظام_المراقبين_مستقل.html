@@ -1103,7 +1103,9 @@ function saveCurrentRecord(){
     halls:Object.entries(lastDist).map(([hname,d])=>({
       hall:hname, needed:d.hall.monitors_needed,
       supervisor:d.supervisor?d.supervisor.name:null,
-      monitors:d.monitors.map(m=>m?m.name:null)
+      supervisorDept:d.supervisor?(d.supervisor.dept||''):'',
+      monitors:d.monitors.map(m=>m?m.name:null),
+      monitorDepts:d.monitors.map(m=>m?(m.dept||''):'')
     })),
     reserve:lastReserve.map(s=>s.name),
     stats:{halls:Object.keys(lastDist).length, assigned, reserve:lastReserve.length,
@@ -1404,8 +1406,8 @@ function exportRecordWord(id){
   const dist={};
   for(const h of rec.halls){
     dist[h.hall]={
-      supervisor:h.supervisor?{name:h.supervisor,title_code:'other',mtype:'',gender:'male'}:null,
-      monitors:h.monitors.map(m=>m?{name:m,title_code:'other',mtype:'',gender:'male'}:null),
+      supervisor:h.supervisor?{name:h.supervisor,title_code:'other',mtype:'',gender:'male',dept:h.supervisorDept||''}:null,
+      monitors:h.monitors.map((m,i)=>m?{name:m,title_code:'other',mtype:'',gender:'male',dept:(h.monitorDepts||[])[i]||''}:null),
       hall:{name:h.hall,monitors_needed:h.needed}
     };
     if(h.supervisor){const rs=STAFF.find(s=>s.name===h.supervisor);if(rs)dist[h.hall].supervisor=rs;}
@@ -2099,8 +2101,8 @@ function exportRecordPDF(id) {
   const dist = {};
   for (const h of rec.halls) {
     dist[h.hall] = {
-      supervisor: h.supervisor ? {name:h.supervisor, title_code:'other', mtype:'', gender:'male', dept:''} : null,
-      monitors:   h.monitors.map(m => m ? {name:m, title_code:'other', mtype:'', gender:'male', dept:''} : null),
+      supervisor: h.supervisor ? {name:h.supervisor, title_code:'other', mtype:'', gender:'male', dept: h.supervisorDept||''} : null,
+      monitors:   h.monitors.map((m,i) => m ? {name:m, title_code:'other', mtype:'', gender:'male', dept: (h.monitorDepts||[])[i]||''} : null),
       hall:       {name:h.hall, monitors_needed:h.needed}
     };
     if (h.supervisor) { const rs = STAFF.find(s => s.name === h.supervisor); if (rs) dist[h.hall].supervisor = rs; }
@@ -2384,15 +2386,16 @@ function exportAttendancePDF() {
   const present = [], absent = [], pending = [];
   for (const h of rec.halls) {
     const ah = att[h.hall] || {};
-    function addPerson(name, role, status) {
+    function addPerson(name, role, status, storedDept) {
       const sm = STAFF.find(s => s.name === name);
-      const obj = {hall: h.hall, role, name, dept: sm ? (sm.dept || '—') : '—'};
+      const dept = (sm && sm.dept) ? sm.dept : (storedDept || '—');
+      const obj = {hall: h.hall, role, name, dept};
       if (status === 'present') present.push(obj);
       else if (status === 'absent') absent.push(obj);
       else pending.push(obj);
     }
-    if (h.supervisor) addPerson(h.supervisor, 'مشرف القاعة', ah.sup || null);
-    h.monitors.forEach((m, i) => { if (m) addPerson(m, 'مراقب '+(i+1), (ah.monitors||[])[i] || null); });
+    if (h.supervisor) addPerson(h.supervisor, 'مشرف القاعة', ah.sup || null, h.supervisorDept || '');
+    h.monitors.forEach((m, i) => { if (m) addPerson(m, 'مراقب '+(i+1), (ah.monitors||[])[i] || null, (h.monitorDepts||[])[i] || ''); });
   }
 
   const th = 'background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;border:1pt solid #374151;font-weight:700;font-size:10pt';
