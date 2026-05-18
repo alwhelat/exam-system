@@ -131,6 +131,10 @@ tr:hover td{background:#eef2ff}
   .g3{grid-template-columns:1fr}
   .hgrid{grid-template-columns:repeat(auto-fill,minmax(76px,1fr))}
 }
+/* ── فلتر المناصب ── */
+.pos-chip{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid #c8cfe8;background:#f1f5f9;color:#64748b;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;user-select:none}
+.pos-chip.on{background:#dbeafe;color:#1e3a8a;border-color:#93c5fd}
+.pos-chip:hover{opacity:.82}
 /* ── الحضور (Attendance) ── */
 .att-rec-sel{width:100%;max-width:420px;padding:8px 12px;font-size:13px;border:1.5px solid #c8cfe8;border-radius:8px;font-family:inherit;direction:rtl}
 .att-stats-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
@@ -407,15 +411,16 @@ tr:hover td{background:#eef2ff}
       <select id="staff-filt-gender" onchange="renderStaffTable()">
         <option value="">الجنسان</option><option value="male">ذكر</option><option value="female">أنثى</option>
       </select>
-      <select id="staff-filt-pos" onchange="renderStaffTable()">
-        <option value="">كل المناصب</option>
-        <option value="تدريسي">تدريسي / تدريسية</option>
-        <option value="مقرر قسم">مقرر قسم</option>
-        <option value="رئيس قسم">رئيس قسم</option>
-        <option value="مقرر كلية">مقرر كلية</option>
-        <option value="معاون عميد">معاون عميد</option>
-        <option value="عميد">عميد</option>
-      </select>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding:3px 0">
+        <span style="font-size:11px;font-weight:700;color:#444;white-space:nowrap;flex-shrink:0">المنصب:</span>
+        <button class="pos-chip on" data-pos="تدريسي|تدريسية" onclick="togglePosChip(this)">تدريسي</button>
+        <button class="pos-chip on" data-pos="مقرر قسم"       onclick="togglePosChip(this)">مقرر قسم</button>
+        <button class="pos-chip on" data-pos="رئيس قسم"       onclick="togglePosChip(this)">رئيس قسم</button>
+        <button class="pos-chip on" data-pos="مقرر كلية"      onclick="togglePosChip(this)">مقرر كلية</button>
+        <button class="pos-chip on" data-pos="معاون عميد"     onclick="togglePosChip(this)">معاون عميد</button>
+        <button class="pos-chip on" data-pos="عميد"           onclick="togglePosChip(this)">عميد</button>
+        <button class="btn" style="font-size:10px;padding:2px 8px" onclick="resetPosChips()" title="تحديد الكل">↺</button>
+      </div>
       <select id="staff-sort" onchange="renderStaffTable()">
         <option value="name">ترتيب: الاسم</option>
         <option value="count_desc">الأكثر مراقبةً أولاً</option>
@@ -1539,23 +1544,34 @@ ${reserve.length?`<h2 style="font-size:13pt;color:#92400e;margin:14pt 0 6pt;bord
 // ─────────────────────────────────────────
 // STAFF TABLE
 // ─────────────────────────────────────────
+function togglePosChip(btn){
+  btn.classList.toggle('on');
+  renderStaffTable();
+}
+function resetPosChips(){
+  document.querySelectorAll('.pos-chip').forEach(c=>c.classList.add('on'));
+  renderStaffTable();
+}
 function renderStaffTable(){
   const q=document.getElementById('staff-search').value.trim().toLowerCase();
   const dept=document.getElementById('staff-filt-dept').value;
   const type=document.getElementById('staff-filt-type').value;
   const gender=document.getElementById('staff-filt-gender').value;
-  const posF=document.getElementById('staff-filt-pos').value;
   const sort=document.getElementById('staff-sort').value;
+  // Build active positions set from chips
+  const chips=[...document.querySelectorAll('.pos-chip')];
+  const allOn=chips.every(c=>c.classList.contains('on'));
+  let activePosSet=null;
+  if(!allOn&&chips.length>0){
+    activePosSet=new Set();
+    chips.forEach(c=>{if(c.classList.contains('on')) c.dataset.pos.split('|').forEach(p=>activePosSet.add(p));});
+  }
   let filtered=STAFF.filter(s=>{
     if(q&&!s.name.toLowerCase().includes(q)&&!s.dept.toLowerCase().includes(q)) return false;
     if(dept&&s.dept!==dept) return false;
     if(type&&s.mtype!==type) return false;
     if(gender&&s.gender!==gender) return false;
-    if(posF){
-      // "تدريسي" covers both تدريسي and تدريسية
-      if(posF==='تدريسي'&&s.pos!=='تدريسي'&&s.pos!=='تدريسية') return false;
-      else if(posF!=='تدريسي'&&s.pos!==posF) return false;
-    }
+    if(activePosSet&&!activePosSet.has(s.pos)) return false;
     return true;
   });
   if(sort==='count_desc') filtered.sort((a,b)=>getHist(b.name).count-getHist(a.name).count);
