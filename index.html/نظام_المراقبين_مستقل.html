@@ -1420,37 +1420,35 @@ function exportRecordWord(id){
 }
 
 function _buildWordRows(entries, tqSet){
-  let rows='', ri=0;
+  let rows='';
   for(const[hname,d]of entries){
     const isTq=tqSet.has(hname);
-    const tot=1+d.monitors.length;
+    const mons=d.monitors?d.monitors.filter(m=>m):[];
+    const total=Math.max(1,mons.length);
     const hallBg=isTq?'#fee2e2':'#dbeafe';
     const hallClr=isTq?'#b91c1c':'#1e3a8a';
     const hallBdr=isTq?'#fca5a5':'#6b7280';
-    const rowBg=isTq?(ri%2===0?'#fff5f5':'#ffe4e6'):(ri%2===0?'#EEF2FF':'#FFFFFF');
     const supName=d.supervisor?d.supervisor.name:'—';
-    const tqTag=isTq?' 🔴':'';
     rows+=`<tr>
-      <td rowspan="${tot}" style="text-align:center;font-weight:800;font-size:11pt;
-        background:${hallBg};color:${hallClr};border:1.5pt solid ${hallBdr};vertical-align:middle;padding:5pt">${hname}${tqTag}</td>
-      <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt 7pt">مشرف القاعة</td>
-      <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt 7pt">${supName}</td>
-      <td style="border:1pt solid #9ca3af;min-width:90pt;background:#fafafa;padding:5pt"></td>
+      <td rowspan="${total}" style="text-align:center;font-weight:800;font-size:11pt;background:${hallBg};color:${hallClr};border:1.5pt solid ${hallBdr};vertical-align:middle;padding:5pt">${hname}</td>
+      <td rowspan="${total}" style="background:#f8faff;border:1pt solid #9ca3af;padding:5pt 7pt;vertical-align:middle;font-weight:600">${supName}</td>
+      <td style="background:#fff;border:1pt solid #9ca3af;padding:5pt 7pt">${mons[0]?mons[0].name:'—'}</td>
+      <td style="border:1pt solid #9ca3af;min-width:60pt;background:#fafafa;padding:5pt"></td>
     </tr>`;
-    d.monitors.forEach((m,i)=>{
+    for(let i=1;i<mons.length;i++){
+      const bg=i%2===1?'#eef2ff':'#fff';
       rows+=`<tr>
-        <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt 7pt">مراقب ${i+1}</td>
-        <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt 7pt">${m?m.name:'—'}</td>
-        <td style="border:1pt solid #9ca3af;min-width:90pt;background:#fafafa;padding:5pt"></td>
+        <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt 7pt">${mons[i].name}</td>
+        <td style="border:1pt solid #9ca3af;background:#fafafa;padding:5pt"></td>
       </tr>`;
-    });
-    ri++;
+    }
   }
   return rows;
 }
 
 function generateWordDoc(dist,reserve,day,date,session,rawDate,takmiliHalls=[]){
   const tqSet=new Set(takmiliHalls);
+  const logoDataUrl=localStorage.getItem(LS_LOGO)||'';
   const tqEntries=Object.entries(dist).filter(([h])=>tqSet.has(h));
   const regEntries=Object.entries(dist).filter(([h])=>!tqSet.has(h));
   const tqRows=_buildWordRows(tqEntries,tqSet);
@@ -1469,60 +1467,50 @@ function generateWordDoc(dist,reserve,day,date,session,rawDate,takmiliHalls=[]){
 
   const now=new Date().toLocaleString('ar-IQ');
   const sesLine=session?`&nbsp;&nbsp;&nbsp;&nbsp;الدورة: <strong>${session}</strong>`:'';
-
-  const tqSection=tqRows?`
-<h2 style="font-size:13pt;color:#b91c1c;margin:14pt 0 6pt;border-right:4pt solid #dc2626;padding-right:7pt">
-  🔴 قاعات الامتحان التقويمي (${tqEntries.length} قاعة)
-</h2>
-<table>
-  <thead><tr>
-    <th style="background:#b91c1c;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #7f1d1d;width:11%;text-align:center">القاعة</th>
-    <th style="background:#b91c1c;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #7f1d1d;width:19%">الدور</th>
-    <th style="background:#b91c1c;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #7f1d1d;width:42%">الاسم</th>
-    <th style="background:#b91c1c;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #7f1d1d;width:28%;text-align:center">التوقيع</th>
-  </tr></thead>
-  <tbody>${tqRows}</tbody>
-</table>`:'';
-
-  const regSection=regRows?`
-<h2 style="font-size:13pt;color:#1e3a8a;margin:14pt 0 6pt;border-right:4pt solid #1e3a8a;padding-right:7pt">
-  قاعات الامتحان النهائي (${regEntries.length} قاعة)
-</h2>
-<table>
-  <thead><tr>
-    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:11%;text-align:center">القاعة</th>
-    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:19%">الدور</th>
-    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:42%">الاسم</th>
-    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:28%;text-align:center">التوقيع</th>
-  </tr></thead>
-  <tbody>${regRows}</tbody>
-</table>`:'';
+  const th='background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;font-weight:700';
+  const logoTag=logoDataUrl
+    ?`<img src="${logoDataUrl}" style="height:65pt;width:65pt;object-fit:contain" alt="">`
+    :`<div style="height:65pt;width:65pt"></div>`;
 
   const html=`<!DOCTYPE html><html dir="rtl" lang="ar">
 <head><meta charset="UTF-8"><title>جدول توزيع المراقبين</title>
 <style>
   body{font-family:Arial,'Traditional Arabic';direction:rtl;margin:2cm;font-size:11pt}
-  h1{text-align:center;font-size:16pt;color:#0d1b6e;margin-bottom:3pt}
-  .uni{text-align:center;font-size:14pt;color:#1e3a8a;font-weight:bold;margin-bottom:2pt}
-  .info{text-align:center;font-size:11pt;color:#374151;margin:10pt 0;padding:5pt 0;border-top:1pt solid #e5e7eb;border-bottom:1pt solid #e5e7eb}
   table{border-collapse:collapse;width:100%;margin-bottom:16pt}
   .footer{text-align:center;font-size:8pt;color:#9ca3af;margin-top:16pt;border-top:1pt solid #e5e7eb;padding-top:5pt}
 </style></head>
 <body>
-<div class="uni">جـامـعـة الـفـارابـي</div>
-<h1>جدول توزيع مراقبي الامتحانات النهائية</h1>
-<div class="info">
-  اليوم: <strong>${day}</strong> &nbsp;&nbsp;&nbsp;&nbsp; التاريخ: <strong>${date}</strong> ${sesLine}
-  ${tqEntries.length?`&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#b91c1c;font-weight:bold">🔴 تقويمي: ${tqEntries.length} قاعة</span>`:''}
+<div style="display:table;width:100%;margin-bottom:10pt">
+  <div style="display:table-cell;vertical-align:middle;width:75pt;direction:ltr">${logoTag}</div>
+  <div style="display:table-cell;vertical-align:middle;text-align:center">
+    <div style="font-size:15pt;color:#1e3a8a;font-weight:bold">جـامـعـة الـفـارابـي</div>
+    <div style="font-size:14pt;color:#0d1b6e;font-weight:bold;margin-top:3pt">جدول توزيع مراقبي الامتحانات النهائية</div>
+    <div style="font-size:10pt;color:#374151;margin-top:5pt;padding:4pt 0;border-top:1pt solid #e5e7eb;border-bottom:1pt solid #e5e7eb">
+      اليوم: <strong>${day}</strong> &nbsp;&nbsp;&nbsp;&nbsp; التاريخ: <strong>${date}</strong> ${sesLine}
+      ${tqEntries.length?`&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#b91c1c;font-weight:bold">تقويمي: ${tqEntries.length} قاعة</span>`:''}
+    </div>
+  </div>
+  <div style="display:table-cell;width:75pt"></div>
 </div>
-${tqSection}${regSection}
+<table>
+  <thead><tr>
+    <th style="${th};width:15%;text-align:center">القاعة</th>
+    <th style="${th};width:25%">المشرف</th>
+    <th style="${th};width:35%">المراقب</th>
+    <th style="${th};width:25%;text-align:center">الملاحظات</th>
+  </tr></thead>
+  <tbody>
+    ${tqRows?`<tr><td colspan="4" style="background:#b91c1c;color:#fff;font-weight:bold;font-size:12pt;text-align:center;padding:6pt;border:1.5pt solid #7f1d1d">مراقبات الامتحان التقويمي (${tqEntries.length} قاعة)</td></tr>${tqRows}`:''}
+    ${regRows?`<tr><td colspan="4" style="background:#1e3a8a;color:#fff;font-weight:bold;font-size:12pt;text-align:center;padding:6pt;border:1.5pt solid #374151">مراقبات الامتحان النهائي (${regEntries.length} قاعة)</td></tr>${regRows}`:''}
+  </tbody>
+</table>
 ${reserve.length?`<h2 style="font-size:13pt;color:#92400e;margin:14pt 0 6pt;border-right:4pt solid #f59e0b;padding-right:7pt">قائمة الاحتياط (${reserve.length} شخص)</h2>
 <table>
   <thead><tr>
-    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:center;font-size:10pt;border:1pt solid #374151;width:7%">#</th>
-    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:40%">الاسم</th>
-    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;font-size:10pt;border:1pt solid #374151;width:25%">القسم</th>
-    <th style="background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:center;font-size:10pt;border:1pt solid #374151;width:28%">التوقيع</th>
+    <th style="${th};width:7%;text-align:center">#</th>
+    <th style="${th};width:40%">الاسم</th>
+    <th style="${th};width:25%">القسم</th>
+    <th style="${th};width:28%;text-align:center">التوقيع</th>
   </tr></thead>
   <tbody>${resRows}</tbody>
 </table>`:''}
@@ -2127,44 +2115,42 @@ function exportRecordPDF(id) {
 }
 
 function _buildDistRows(entries, tqSet) {
-  let rows = '', ri = 0;
+  let rows = '';
   for (const [hname, d] of entries) {
-    const isTq  = tqSet.has(hname);
-    const tot   = 1 + d.monitors.length;
+    const isTq   = tqSet.has(hname);
+    const mons   = d.monitors ? d.monitors.filter(m => m) : [];
+    const total  = Math.max(1, mons.length);
     const hallBg = isTq ? '#fee2e2' : '#dbeafe';
     const hallClr= isTq ? '#b91c1c' : '#1e3a8a';
     const hallBdr= isTq ? '#fca5a5' : '#6b7280';
-    const rowBg  = isTq ? (ri%2===0?'#fff5f5':'#ffe4e6') : (ri%2===0?'#EEF2FF':'#FFFFFF');
     const supName= d.supervisor ? d.supervisor.name : '—';
-    const tqTag  = isTq ? ' 🔴' : '';
+    // First row: hall + supervisor span all monitor rows
     rows += `<tr>
-      <td rowspan="${tot}" style="text-align:center;font-weight:800;font-size:11pt;background:${hallBg};color:${hallClr};border:1.5pt solid ${hallBdr};vertical-align:middle;padding:5pt">${hname}${tqTag}</td>
-      <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt">مشرف القاعة</td>
-      <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt">${supName}</td>
-      <td style="border:1pt solid #9ca3af;min-width:70pt;background:#fafafa;padding:5pt"></td>
+      <td rowspan="${total}" style="text-align:center;font-weight:800;font-size:11pt;background:${hallBg};color:${hallClr};border:1.5pt solid ${hallBdr};vertical-align:middle;padding:6pt">${hname}</td>
+      <td rowspan="${total}" style="background:#f8faff;border:1pt solid #9ca3af;padding:5pt 7pt;vertical-align:middle;font-weight:600">${supName}</td>
+      <td style="background:#fff;border:1pt solid #9ca3af;padding:5pt 7pt">${mons[0] ? mons[0].name : '—'}</td>
+      <td style="border:1pt solid #9ca3af;min-width:60pt;background:#fafafa;padding:5pt"></td>
     </tr>`;
-    d.monitors.forEach((m, i) => {
+    for (let i = 1; i < mons.length; i++) {
+      const bg = i % 2 === 1 ? '#eef2ff' : '#fff';
       rows += `<tr>
-        <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt">مراقب ${i+1}</td>
-        <td style="background:${rowBg};border:1pt solid #9ca3af;padding:5pt">${m ? m.name : '—'}</td>
-        <td style="border:1pt solid #9ca3af;min-width:70pt;background:#fafafa;padding:5pt"></td>
+        <td style="background:${bg};border:1pt solid #9ca3af;padding:5pt 7pt">${mons[i].name}</td>
+        <td style="border:1pt solid #9ca3af;background:#fafafa;padding:5pt"></td>
       </tr>`;
-    });
-    ri++;
+    }
   }
   return rows;
 }
 
 function _genPDF(dist, reserve, day, date, session, rawDate, takmiliHalls = []) {
-  const tqSet   = new Set(takmiliHalls);
-  const th      = 'background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;border:1pt solid #374151;font-weight:700';
-  const thRed   = 'background:#b91c1c;color:#fff;padding:6pt 8pt;text-align:right;border:1pt solid #7f1d1d;font-weight:700';
-  const colW    = 'width:11%;text-align:center';
+  const tqSet      = new Set(takmiliHalls);
+  const logoDataUrl = localStorage.getItem(LS_LOGO) || '';
+  const th         = 'background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;border:1pt solid #374151;font-weight:700';
 
   const tqEntries  = Object.entries(dist).filter(([h]) => tqSet.has(h));
   const regEntries = Object.entries(dist).filter(([h]) => !tqSet.has(h));
-  const tqRows  = tqEntries.length  ? _buildDistRows(tqEntries,  tqSet) : '';
-  const regRows = regEntries.length ? _buildDistRows(regEntries, tqSet) : '';
+  const tqRows     = tqEntries.length  ? _buildDistRows(tqEntries,  tqSet) : '';
+  const regRows    = regEntries.length ? _buildDistRows(regEntries, tqSet) : '';
 
   let resRows = '';
   reserve.forEach((s, i) => {
@@ -2177,46 +2163,17 @@ function _genPDF(dist, reserve, day, date, session, rawDate, takmiliHalls = []) 
     </tr>`;
   });
 
-  const sesLine = session ? `&nbsp;&nbsp; الدورة: <strong>${session}</strong>` : '';
-  const now = new Date().toLocaleString('ar-IQ');
-
-  const tqSection = tqRows ? `
-    <h2 style="color:#b91c1c;border-right:4pt solid #dc2626;padding-right:8pt;margin:10pt 0 5pt">
-      🔴 قاعات الامتحان التقويمي (${tqEntries.length} قاعة)
-    </h2>
-    <table>
-      <thead><tr>
-        <th style="${thRed};${colW}">القاعة</th>
-        <th style="${thRed};width:19%">الدور</th>
-        <th style="${thRed};width:42%">الاسم</th>
-        <th style="${thRed};width:28%;text-align:center">التوقيع</th>
-      </tr></thead>
-      <tbody>${tqRows}</tbody>
-    </table>` : '';
-
-  const regSection = regRows ? `
-    <h2 style="color:#1e3a8a;border-right:4pt solid #1E3A8A;padding-right:8pt;margin:10pt 0 5pt">
-      قاعات الامتحان النهائي (${regEntries.length} قاعة)
-    </h2>
-    <table>
-      <thead><tr>
-        <th style="${th};${colW}">القاعة</th>
-        <th style="${th};width:19%">الدور</th>
-        <th style="${th};width:42%">الاسم</th>
-        <th style="${th};width:28%;text-align:center">التوقيع</th>
-      </tr></thead>
-      <tbody>${regRows}</tbody>
-    </table>` : '';
+  const sesLine  = session ? `&nbsp;&nbsp; الدورة: <strong>${session}</strong>` : '';
+  const now      = new Date().toLocaleString('ar-IQ');
+  const logoTag  = logoDataUrl
+    ? `<img src="${logoDataUrl}" style="height:65pt;width:65pt;object-fit:contain" alt="">`
+    : `<div style="height:65pt;width:65pt"></div>`;
 
   const htmlStr = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
 <title>توزيع المراقبين — ${day} ${date}</title><style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,'Traditional Arabic',Tahoma,sans-serif;direction:rtl;color:#111;font-size:11pt}
 table{border-collapse:collapse;width:100%;margin-bottom:14pt}
-h1{text-align:center;font-size:15pt;color:#0d1b6e;margin-bottom:4pt}
-h2{font-size:12pt;margin:12pt 0 5pt}
-.uni{text-align:center;font-size:14pt;color:#1e3a8a;font-weight:700;margin-bottom:2pt}
-.info{text-align:center;font-size:10pt;margin:8pt 0;padding:5pt 0;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
 .footer{text-align:center;font-size:8pt;color:#9ca3af;margin-top:12pt;border-top:1px solid #e5e7eb;padding-top:5pt}
 @media screen{.bar{position:fixed;top:0;left:0;right:0;background:#0d1b6e;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:14px;z-index:999;flex-wrap:wrap}.content{margin-top:58px;padding:16px}}
 @media print{.bar{display:none!important}.content{margin-top:0;padding:0}body{padding:1cm}}
@@ -2227,11 +2184,32 @@ h2{font-size:12pt;margin:12pt 0 5pt}
   <button onclick="window.close()" style="background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.35);padding:8px 18px;border-radius:7px;cursor:pointer;font-size:12px;font-family:inherit">✕ إغلاق</button>
 </div>
 <div class="content">
-  <div class="uni">جـامـعـة الـفـارابـي</div>
-  <h1>جدول توزيع مراقبي الامتحانات النهائية</h1>
-  <div class="info">اليوم: <strong>${day}</strong> &nbsp;&nbsp; التاريخ: <strong>${date}</strong>${sesLine}${tqEntries.length?` &nbsp;&nbsp; <span style="color:#b91c1c;font-weight:800">🔴 تقويمي: ${tqEntries.length} قاعة</span>`:''}</div>
-  ${tqSection}${regSection}
-  ${reserve.length ? `<h2 style="color:#92400e;border-right:3pt solid #f59e0b;padding-right:6pt">قائمة الاحتياط (${reserve.length} شخص)</h2>
+  <div style="display:table;width:100%;margin-bottom:10pt">
+    <div style="display:table-cell;vertical-align:middle;width:75pt;direction:ltr">${logoTag}</div>
+    <div style="display:table-cell;vertical-align:middle;text-align:center">
+      <div style="font-size:15pt;color:#1e3a8a;font-weight:800">جـامـعـة الـفـارابـي</div>
+      <div style="font-size:14pt;color:#0d1b6e;font-weight:700;margin-top:3pt">جدول توزيع مراقبي الامتحانات النهائية</div>
+      <div style="font-size:10pt;color:#374151;margin-top:5pt;padding:4pt 0;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb">
+        اليوم: <strong>${day}</strong> &nbsp;&nbsp; التاريخ: <strong>${date}</strong>${sesLine}${tqEntries.length ? ` &nbsp;&nbsp; <span style="color:#b91c1c;font-weight:800">تقويمي: ${tqEntries.length} قاعة</span>` : ''}
+      </div>
+    </div>
+    <div style="display:table-cell;width:75pt"></div>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th style="${th};width:15%;text-align:center">القاعة</th>
+      <th style="${th};width:25%">المشرف</th>
+      <th style="${th};width:35%">المراقب</th>
+      <th style="${th};width:25%;text-align:center">الملاحظات</th>
+    </tr></thead>
+    <tbody>
+      ${tqRows ? `<tr><td colspan="4" style="background:#b91c1c;color:#fff;font-weight:800;font-size:12pt;text-align:center;padding:6pt;border:1.5pt solid #7f1d1d">مراقبات الامتحان التقويمي (${tqEntries.length} قاعة)</td></tr>${tqRows}` : ''}
+      ${regRows ? `<tr><td colspan="4" style="background:#1e3a8a;color:#fff;font-weight:800;font-size:12pt;text-align:center;padding:6pt;border:1.5pt solid #374151">مراقبات الامتحان النهائي (${regEntries.length} قاعة)</td></tr>${regRows}` : ''}
+    </tbody>
+  </table>
+
+  ${reserve.length ? `<h2 style="font-size:12pt;color:#92400e;border-right:3pt solid #f59e0b;padding-right:6pt;margin:10pt 0 5pt">قائمة الاحتياط (${reserve.length} شخص)</h2>
   <table>
     <thead><tr>
       <th style="${th};width:7%;text-align:center">#</th>
@@ -2407,7 +2385,8 @@ function exportAttendancePDF() {
   for (const h of rec.halls) {
     const ah = att[h.hall] || {};
     function addPerson(name, role, status) {
-      const obj = {hall: h.hall, role, name};
+      const sm = STAFF.find(s => s.name === name);
+      const obj = {hall: h.hall, role, name, dept: sm ? (sm.dept || '—') : '—'};
       if (status === 'present') present.push(obj);
       else if (status === 'absent') absent.push(obj);
       else pending.push(obj);
@@ -2422,6 +2401,7 @@ function exportAttendancePDF() {
       const bg = i%2===0 ? bg1 : bg2;
       return `<tr><td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;text-align:center">${i+1}</td>
         <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt;font-weight:700">${p.name}</td>
+        <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt">${p.dept}</td>
         <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt">${p.hall}</td>
         <td style="background:${bg};border:1pt solid #d1d5db;padding:5pt">${p.role}</td>
       </tr>`;
@@ -2464,24 +2444,27 @@ h2{font-size:13pt;margin:12pt 0 5pt;padding-right:6pt;border-right:4pt solid}
   </div>
   ${present.length ? `<h2 style="color:#15803d;border-color:#86efac">✔ الحاضرون (${present.length})</h2>
   <table><thead><tr>
-    <th style="${th};width:6%;text-align:center">#</th>
-    <th style="${th};width:38%">الاسم</th>
-    <th style="${th};width:26%">القاعة</th>
-    <th style="${th};width:30%">الدور</th>
+    <th style="${th};width:5%;text-align:center">#</th>
+    <th style="${th};width:28%">الاسم</th>
+    <th style="${th};width:20%">القسم</th>
+    <th style="${th};width:22%">القاعة</th>
+    <th style="${th};width:25%">الدور</th>
   </tr></thead><tbody>${mkRows(present,'#f0fdf4','#ffffff')}</tbody></table>` : ''}
   ${absent.length ? `<h2 style="color:#b91c1c;border-color:#fca5a5">✗ الغائبون (${absent.length})</h2>
   <table><thead><tr>
-    <th style="${th};width:6%;text-align:center">#</th>
-    <th style="${th};width:38%">الاسم</th>
-    <th style="${th};width:26%">القاعة</th>
-    <th style="${th};width:30%">الدور</th>
+    <th style="${th};width:5%;text-align:center">#</th>
+    <th style="${th};width:28%">الاسم</th>
+    <th style="${th};width:20%">القسم</th>
+    <th style="${th};width:22%">القاعة</th>
+    <th style="${th};width:25%">الدور</th>
   </tr></thead><tbody>${mkRows(absent,'#fff1f2','#ffffff')}</tbody></table>` : ''}
   ${pending.length ? `<h2 style="color:#64748b;border-color:#e2e8f0">⬜ لم يُسجَّل حضورهم (${pending.length})</h2>
   <table><thead><tr>
-    <th style="${th};width:6%;text-align:center">#</th>
-    <th style="${th};width:38%">الاسم</th>
-    <th style="${th};width:26%">القاعة</th>
-    <th style="${th};width:30%">الدور</th>
+    <th style="${th};width:5%;text-align:center">#</th>
+    <th style="${th};width:28%">الاسم</th>
+    <th style="${th};width:20%">القسم</th>
+    <th style="${th};width:22%">القاعة</th>
+    <th style="${th};width:25%">الدور</th>
   </tr></thead><tbody>${mkRows(pending,'#f8fafc','#ffffff')}</tbody></table>` : ''}
   <div class="footer">تم الإنشاء: ${now} | جامعة الفارابي — لجنة الامتحانات</div>
 </div></body></html>`;
