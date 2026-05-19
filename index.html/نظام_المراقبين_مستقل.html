@@ -217,6 +217,8 @@ tr:hover td{background:#eef2ff}
 .hchk.tq-hall{background:#fff5f5!important;border-color:#fca5a5!important}
 .hall-block.tq{border:2px solid #dc2626!important}
 .hall-block.tq .hall-hdr{background:#fee2e2!important}
+.hall-block.hall-mod{border:2px solid #f59e0b!important}
+.hall-block.hall-mod .hall-hdr{background:#fef3c7!important}
 .tq-label{display:inline-block;background:#dc2626;color:#fff;font-size:9px;font-weight:800;padding:1px 7px;border-radius:20px;margin-right:5px;vertical-align:middle}
 .tq-his{background:#fee2e2!important}
 </style>
@@ -634,6 +636,43 @@ tr:hover td{background:#eef2ff}
   </div>
 </div>
 
+<!-- NOTE EDIT POPUP -->
+<div id="note-ov" onclick="closeNotePopup()" style="display:none;position:fixed;inset:0;z-index:1099"></div>
+<div id="note-popup" style="display:none;position:fixed;z-index:1100;background:#fff;border-radius:11px;box-shadow:0 8px 32px rgba(0,0,0,.18);border:1.5px solid #e0e7ff;min-width:220px;overflow:hidden">
+  <div style="background:#f0f4ff;padding:9px 13px;border-bottom:1px solid #e0e7ff;font-size:12px;font-weight:800;color:#0d1b6e" id="nep-name"></div>
+  <div style="padding:7px 8px;display:flex;flex-direction:column;gap:4px" id="nep-opts">
+    <button class="btn" style="font-size:12px;padding:5px 12px;text-align:right;justify-content:flex-start;background:#fff7ed;border-color:#fed7aa;color:#92400e" onclick="applyNote('مجاز')">📋 مجاز</button>
+    <button class="btn" style="font-size:12px;padding:5px 12px;text-align:right;justify-content:flex-start;background:#fff7ed;border-color:#fed7aa;color:#92400e" onclick="applyNote('كبير سن')">👴 كبير سن</button>
+    <button class="btn" style="font-size:12px;padding:5px 12px;text-align:right;justify-content:flex-start;background:#fff7ed;border-color:#fed7aa;color:#92400e" onclick="applyNote('مريض')">🏥 مريض</button>
+    <button class="btn" style="font-size:12px;padding:5px 12px;text-align:right;justify-content:flex-start;background:#fef9c3;border-color:#fde68a;color:#78350f" onclick="applyNote('لا يصلح تقويمي')">⚠ لا يصلح تقويمي</button>
+    <div style="display:flex;gap:5px;margin-top:1px">
+      <input type="text" id="nep-custom" placeholder="أخرى — اكتب..." style="flex:1;font-size:11px;padding:4px 8px;border:1px solid #c8cfe8;border-radius:6px;font-family:inherit">
+      <button class="btn bp" style="font-size:11px;padding:4px 9px" onclick="applyCustomNote()">✔</button>
+    </div>
+    <button class="btn" style="font-size:11px;padding:4px 12px;color:#dc2626;border-color:#fca5a5;margin-top:2px" onclick="applyNote('')">✕ إزالة الملاحظة</button>
+  </div>
+</div>
+
+<!-- ASSIGN LATE MODAL -->
+<div class="auth-modal-ov" id="assign-late-modal">
+  <div class="auth-modal" style="max-width:420px;width:90vw">
+    <h3 style="margin-bottom:12px" id="alm-title">⊕ توزيع من الاحتياط</h3>
+    <div id="alm-info" style="margin-bottom:12px;padding:8px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #86efac;font-size:13px;font-weight:700;color:#166534"></div>
+    <label class="auth-field-lbl">اختر القاعة:</label>
+    <select class="auth-field" id="alm-hall" onchange="updateAlmSlots()">
+      <option value="">— اختر القاعة —</option>
+    </select>
+    <label class="auth-field-lbl" style="margin-top:10px">اختر المكان في القاعة:</label>
+    <select class="auth-field" id="alm-slot">
+      <option value="">— اختر القاعة أولاً —</option>
+    </select>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn" onclick="closeAssignLateModal()">إلغاء</button>
+      <button class="btn bp" onclick="doAssignLate()">✔ توزيع</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════ JAVASCRIPT ══════════════════ -->
 <script>
 // ═════════════════════════════════════════
@@ -785,6 +824,7 @@ const FEM_NAMES = new Set([
 const LS_RECORDS    = 'fuc_exam_records_v1';
 const LS_HISTORY    = 'fuc_monitor_history_v1';
 const LS_ATTENDANCE = 'fuc_attendance_v1';
+const LS_STAFF_NOTES = 'fuc_staff_notes_v1';
 
 // ─────────────────────────────────────────
 // STATE
@@ -795,6 +835,7 @@ let staffWb=null, hallsWb=null;
 let RECORDS    = lsGet(LS_RECORDS, []);
 let HISTORY    = lsGet(LS_HISTORY, {});
 let ATTENDANCE = lsGet(LS_ATTENDANCE, {});
+let STAFF_NOTES = lsGet(LS_STAFF_NOTES, {}); // { [name]: noteText } — manual overrides
 let TAKMILI_HALLS = new Set();
 let _attRecId = null;
 
@@ -839,6 +880,9 @@ function applyRecordToHistory(rec) {
     h.monitors.forEach((m,i)=>{ if(m) add(m,'مراقب '+(i+1),h.hall); });
   }
   rec.reserve.forEach(name=>add(name,'احتياط','—'));
+  if(rec.lateAssignments){
+    rec.lateAssignments.forEach(la=>add(la.name, la.fromType+' → مراقب', la.hall));
+  }
 }
 
 // ─────────────────────────────────────────
@@ -931,6 +975,8 @@ function onBothLoaded(){
   try{
     const ss=staffWb.Sheets['الملاك']||staffWb.Sheets[staffWb.SheetNames[0]];
     STAFF=processStaff(ss);
+    // Apply manual notes overrides (take priority over Excel column)
+    STAFF.forEach(s=>{ if(STAFF_NOTES[s.name]!==undefined){ s.notes=STAFF_NOTES[s.name]; s.has_notes=!!s.notes; } });
     const hs=hallsWb.Sheets[hallsWb.SheetNames[0]];
     HALLS=processHalls(hs);
     if(!STAFF.length){alert('لم يُعثر على بيانات في ملف التدريسيين');return;}
@@ -1107,6 +1153,8 @@ function runDistribution(){
   document.getElementById('btn-save').style.display='';
   document.getElementById('save-msg').innerHTML='';
   lastExcludedNotes=STAFF.filter(s=>s.has_notes&&s.days.includes(day));
+  lastLateAssignments=[];
+  _modifiedHalls=new Set();
   renderResults(lastDist,lastReserve,lastRemaining,day,genderViolations,lastExcludedNotes);
   logActivity('تشغيل التوزيع',`اليوم: ${day} | القاعات: ${sel.length} | الموزَّعون: ${assigned} | الاحتياط: ${lastReserve.length} | انتهاكات الجنس: ${genderViolations}`);
 }
@@ -1142,6 +1190,7 @@ function saveCurrentRecord(){
     })),
     reserve:lastReserve.map(s=>s.name),
     notes: notes,
+    lateAssignments: lastLateAssignments.slice(),
     stats:{halls:Object.keys(lastDist).length, assigned, reserve:lastReserve.length,
            takmili:activeTqHalls.length}
   };
@@ -1219,7 +1268,7 @@ function personLine(p){
     ${histBadge(p.name)}`;
 }
 
-function renderResults(dist,reserve,remaining,day,genderViolations,excludedNotes){
+function renderResults(dist,reserve,remaining,day,genderViolations,excludedNotes,modifiedHalls=new Set()){
   const tqCount=[...TAKMILI_HALLS].filter(h=>dist[h]).length;
   let html=`<div class="alert aok">✔ اكتمل التوزيع ليوم <strong>${day}</strong> — ${Object.keys(dist).length} قاعة &nbsp;|&nbsp; احتياط: ${reserve.length}${tqCount>0?` &nbsp;|&nbsp; <span style="color:#dc2626;font-weight:800">🔴 تقويمي: ${tqCount} قاعة</span>`:''}</div>`;
   if(genderViolations>0){
@@ -1227,10 +1276,12 @@ function renderResults(dist,reserve,remaining,day,genderViolations,excludedNotes
   }
   for(const[hname,d]of Object.entries(dist)){
     const isTq=TAKMILI_HALLS.has(hname);
+    const isMod=modifiedHalls.has(hname);
     const tqLabel=isTq?`<span class="tq-label">تقويمي</span>`:'';
-    html+=`<div class="hall-block${isTq?' tq':''}" data-hname="${escHtml(hname)}">
+    const modLabel=isMod?`<span style="background:#f59e0b;color:#fff;font-size:9px;font-weight:800;padding:1px 7px;border-radius:20px;margin-right:5px;vertical-align:middle">تم التعديل</span>`:'';
+    html+=`<div class="hall-block${isTq?' tq':''}${isMod?' hall-mod':''}" data-hname="${escHtml(hname)}">
       <div class="hall-hdr">
-        <span class="hall-title">🏛 ${tqLabel}${hname}</span>
+        <span class="hall-title">🏛 ${tqLabel}${modLabel}${hname}</span>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="hall-meta">مطلوب: ${d.hall.monitors_needed}</span>
           <button class="btn" style="font-size:11px;padding:3px 9px;background:#fef9c3;border-color:#fcd34d;color:#713f12"
@@ -1253,18 +1304,19 @@ function renderResults(dist,reserve,remaining,day,genderViolations,excludedNotes
       <div style="padding:8px 13px;overflow-x:auto">
       <table>
         <thead><tr><th>#</th><th>الاسم</th><th>القسم</th><th>النوع</th>
-          <th style="background:#fef3c7;color:#92400e">مرات المراقبة السابقة</th><th>الهاتف</th></tr></thead>
+          <th style="background:#fef3c7;color:#92400e">مرات المراقبة السابقة</th><th>الهاتف</th><th>توزيع</th></tr></thead>
         <tbody>`;
     reserve.forEach((s,i)=>{
-      const lbl=TITLE_LABEL[s.title_code]||'—';
       const tCls=s.mtype==='ملاك'?'bm':'bh';
       html+=`<tr>
         <td>${i+1}</td>
-        <td><strong>${s.name}</strong></td>
-        <td>${s.dept}</td>
+        <td><strong>${escHtml(s.name)}</strong></td>
+        <td>${escHtml(s.dept)}</td>
         <td><span class="bx ${tCls}">${s.mtype}</span></td>
         <td>${histBadge(s.name)}</td>
         <td>${s.phone||'—'}</td>
+        <td><button class="btn" style="font-size:10px;padding:2px 8px;background:#dcfce7;color:#15803d;border-color:#86efac;white-space:nowrap"
+          onclick="openAssignLateModal('${escHtml(s.name).replace(/'/g,"\\'")}','احتياط')">⊕ توزيع</button></td>
       </tr>`;
     });
     html+=`</tbody></table></div></div>`;
@@ -1277,12 +1329,13 @@ function renderResults(dist,reserve,remaining,day,genderViolations,excludedNotes
       <div style="overflow-x:auto;margin-top:8px">
       <table>
         <thead><tr><th>#</th><th>الاسم</th><th>القسم</th><th>النوع</th>
-          <th style="background:#fef3c7;color:#92400e">مرات المراقبة</th></tr></thead>
+          <th style="background:#fef3c7;color:#92400e">مرات المراقبة</th><th>توزيع</th></tr></thead>
         <tbody>`;
     remaining.forEach((s,i)=>{
-      const lbl=TITLE_LABEL[s.title_code]||'—';
-      html+=`<tr><td>${i+1}</td><td>${s.name}</td><td>${s.dept}</td><td>${s.mtype}</td>
-        <td>${histBadge(s.name)}</td></tr>`;
+      html+=`<tr><td>${i+1}</td><td>${escHtml(s.name)}</td><td>${escHtml(s.dept)}</td><td>${s.mtype}</td>
+        <td>${histBadge(s.name)}</td>
+        <td><button class="btn" style="font-size:10px;padding:2px 8px;background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;white-space:nowrap"
+          onclick="openAssignLateModal('${escHtml(s.name).replace(/'/g,"\\'")}','غير موزع')">⊕ توزيع</button></td></tr>`;
     });
     html+=`</tbody></table></div></details>`;
   }
@@ -1373,6 +1426,8 @@ function renderRecordsTab(){
     const dt=rec.date?rec.date.replace(/-/g,'/'):'—';
     const tqCount=(rec.takmiliHalls||[]).length;
     const tqBadge=tqCount>0?`<span class="rec-stat" style="background:#fee2e2;border-color:#fca5a5;color:#b91c1c;font-weight:800">🔴 تقويمي: ${tqCount}</span>`:'';
+    const lateCnt=(rec.lateAssignments||[]).length;
+    const lateBadge=lateCnt>0?`<span class="rec-stat" style="background:#f0fdf4;border-color:#86efac;color:#166534;font-weight:800">⊕ ${lateCnt} موزَّع لاحقاً</span>`:'';
     return `<div class="rec-card">
       <div class="rec-hdr">
         <span class="rec-day">${rec.day}</span>
@@ -1382,7 +1437,7 @@ function renderRecordsTab(){
           <span class="rec-stat">🏛 ${rec.stats.halls} قاعة</span>
           <span class="rec-stat">👥 ${rec.stats.assigned} موزَّع</span>
           <span class="rec-stat" style="background:#fff7ed;border-color:#fed7aa;color:#92400e">⚡ ${rec.stats.reserve} احتياط</span>
-          ${tqBadge}
+          ${tqBadge}${lateBadge}
         </div>
         <div class="rec-actions">
           <button class="btn" style="font-size:11px;padding:3px 9px" onclick="toggleRecBody(${rec.id})">عرض</button>
@@ -1440,6 +1495,25 @@ function buildRecordDetail(rec){
     rec.reserve.forEach((n,i)=>{
       const rh=getHist(n);
       html+=`<tr><td>${i+1}</td><td>${n}</td><td>${rh.count} مرة</td></tr>`;
+    });
+    html+=`</tbody></table></div></details>`;
+  }
+  if(rec.lateAssignments&&rec.lateAssignments.length){
+    html+=`<details style="margin-top:8px" open>
+      <summary style="cursor:pointer;font-size:12px;font-weight:700;color:#166534;padding:6px 10px;background:#f0fdf4;border-radius:7px;border:1px solid #86efac">
+        ⊕ موزَّعون لاحقاً (${rec.lateAssignments.length} شخص)
+      </summary>
+      <div style="overflow-x:auto;margin-top:5px"><table>
+        <thead><tr><th>#</th><th>الاسم</th><th>المصدر</th><th>القاعة</th></tr></thead><tbody>`;
+    rec.lateAssignments.forEach((la,i)=>{
+      const fromBg=la.fromType==='احتياط'?'#fff7ed':'#f0fdf4';
+      const fromClr=la.fromType==='احتياط'?'#92400e':'#166534';
+      html+=`<tr>
+        <td>${i+1}</td>
+        <td><strong>${escHtml(la.name)}</strong></td>
+        <td><span style="background:${fromBg};color:${fromClr};border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">${escHtml(la.fromType)}</span></td>
+        <td>${escHtml(la.hall)}</td>
+      </tr>`;
     });
     html+=`</tbody></table></div></details>`;
   }
@@ -1604,6 +1678,112 @@ ${reserve.length?`<div style="page-break-before:always">
 // ─────────────────────────────────────────
 // STAFF TABLE
 // ─────────────────────────────────────────
+// STAFF NOTES (manual override)
+// ─────────────────────────────────────────
+let _noteTarget = null;
+function openNotePopup(name, event) {
+  event.stopPropagation();
+  _noteTarget = name;
+  document.getElementById('nep-name').textContent = name;
+  document.getElementById('nep-custom').value = '';
+  const btn = event.currentTarget;
+  const r = btn.getBoundingClientRect();
+  const pop = document.getElementById('note-popup');
+  pop.style.display = '';
+  // Position below button, adjust if near bottom
+  const top = r.bottom + 6;
+  pop.style.top  = Math.min(top, window.innerHeight - 280) + 'px';
+  pop.style.right = Math.max(4, window.innerWidth - r.right) + 'px';
+  pop.style.left  = 'auto';
+  document.getElementById('note-ov').style.display = '';
+}
+function closeNotePopup() {
+  document.getElementById('note-popup').style.display = 'none';
+  document.getElementById('note-ov').style.display = 'none';
+  _noteTarget = null;
+}
+function applyNote(note) {
+  if (!_noteTarget) return;
+  STAFF_NOTES[_noteTarget] = note;
+  lsSet(LS_STAFF_NOTES, STAFF_NOTES);
+  const s = STAFF.find(st => st.name === _noteTarget);
+  if (s) { s.notes = note; s.has_notes = !!note; }
+  closeNotePopup();
+  renderStaffTable();
+}
+function applyCustomNote() {
+  const v = document.getElementById('nep-custom').value.trim();
+  if (!v) return;
+  applyNote(v);
+}
+
+// ─────────────────────────────────────────
+// ASSIGN FROM RESERVE / REMAINING
+// ─────────────────────────────────────────
+function openAssignLateModal(name, fromType) {
+  _assignLateTarget = {name, fromType};
+  document.getElementById('alm-title').textContent =
+    fromType === 'احتياط' ? '⚡ توزيع من قائمة الاحتياط' : '📋 توزيع من غير الموزعين';
+  document.getElementById('alm-info').textContent = '👤 ' + name;
+  const sel = document.getElementById('alm-hall');
+  sel.innerHTML = '<option value="">— اختر القاعة —</option>' +
+    Object.keys(lastDist || {}).map(h => `<option value="${escHtml(h)}">${escHtml(h)}</option>`).join('');
+  document.getElementById('alm-slot').innerHTML = '<option value="">— اختر القاعة أولاً —</option>';
+  document.getElementById('assign-late-modal').classList.add('show');
+}
+function updateAlmSlots() {
+  const hname = document.getElementById('alm-hall').value;
+  const sel   = document.getElementById('alm-slot');
+  if (!hname || !lastDist || !lastDist[hname]) {
+    sel.innerHTML = '<option value="">— اختر القاعة أولاً —</option>'; return;
+  }
+  const d = lastDist[hname];
+  let opts = '<option value="">— اختر المكان —</option>';
+  opts += `<option value="sup">مشرف القاعة${d.supervisor ? ' (يحل محل: ' + escHtml(d.supervisor.name) + ')' : ' — فارغ'}</option>`;
+  d.monitors.forEach((m, mi) => {
+    opts += `<option value="mon:${mi}">مراقب ${mi + 1}${m ? ' (يحل محل: ' + escHtml(m.name) + ')' : ' — فارغ'}</option>`;
+  });
+  sel.innerHTML = opts;
+}
+function closeAssignLateModal() {
+  document.getElementById('assign-late-modal').classList.remove('show');
+  _assignLateTarget = null;
+}
+function doAssignLate() {
+  if (!_assignLateTarget) return;
+  const hname = document.getElementById('alm-hall').value;
+  const slot  = document.getElementById('alm-slot').value;
+  if (!hname || !slot) { alert('اختر القاعة والمكان أولاً'); return; }
+  if (!lastDist || !lastDist[hname]) return;
+  const {name, fromType} = _assignLateTarget;
+  const person = STAFF.find(s => s.name === name) || {name, title_code:'other', mtype:'', gender:'male', dept:''};
+  const d = lastDist[hname];
+  if (slot === 'sup') {
+    d.supervisor = person;
+  } else if (slot.startsWith('mon:')) {
+    d.monitors[parseInt(slot.slice(4))] = person;
+  }
+  if (fromType === 'احتياط') {
+    lastReserve   = lastReserve.filter(s => s.name !== name);
+  } else {
+    lastRemaining = lastRemaining.filter(s => s.name !== name);
+  }
+  lastLateAssignments.push({name, fromType, hall: hname});
+  const day = document.getElementById('sel-day').value;
+  let assigned = 0;
+  for (const hd of Object.values(lastDist)) {
+    if (hd.supervisor) assigned++;
+    assigned += hd.monitors.filter(m => m).length;
+  }
+  document.getElementById('s-assigned').textContent = assigned;
+  document.getElementById('s-reserve').textContent  = lastReserve.length;
+  document.getElementById('s-remain').textContent   = lastRemaining.length;
+  renderResults(lastDist, lastReserve, lastRemaining, day, 0, lastExcludedNotes, _modifiedHalls);
+  logActivity('توزيع من ' + fromType, `${name} → قاعة ${hname}`);
+  closeAssignLateModal();
+}
+
+// ─────────────────────────────────────────
 // DEPT FILTER
 // ─────────────────────────────────────────
 function buildDeptCheckboxes(depts){
@@ -1699,7 +1879,10 @@ function renderStaffTable(){
       <td style="font-size:11px;white-space:nowrap">${s.pos||'—'}</td>
       <td style="font-size:11px">${s.days.join('، ')}</td>
       <td>${s.in_committee?'✔':''} ${comm}</td>
-      <td>${s.notes?`<span style="background:#fff7ed;color:#92400e;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700;white-space:nowrap">${escHtml(s.notes)}</span>`:''}</td>
+      <td style="white-space:nowrap">
+        ${s.notes?`<span style="background:#fff7ed;color:#92400e;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700">${escHtml(s.notes)}</span> `:''}
+        <button class="btn" style="font-size:10px;padding:1px 7px;color:#1e3a8a;border-color:#a5b4fc" onclick="openNotePopup('${escHtml(s.name)}',event)">✏</button>
+      </td>
       <td style="${countStyle};text-align:center">${h.count}${tqCell}</td>
       <td style="font-size:11px;color:#555">${lastStr}</td>
       <td>${s.phone||'—'}</td>
@@ -2121,6 +2304,9 @@ function initAuth() {
 // EDIT HALL MODAL
 // ─────────────────────────────────────────
 let _editHall = null;
+let _modifiedHalls = new Set();
+let lastLateAssignments = [];
+let _assignLateTarget = null;
 
 function openEditHallModal(hname) {
   if (!lastDist || !lastDist[hname]) return;
@@ -2229,13 +2415,35 @@ function closeEditHallModal() {
   _editHall = null;
 }
 
+// Remove a person (by id) from all halls except excludeHall; also from reserve/remaining
+function _removePersonFromOtherHalls(personId, excludeHall) {
+  if (!personId || !lastDist) return;
+  for (const [hname, hd] of Object.entries(lastDist)) {
+    if (hname === excludeHall) continue;
+    if (hd.supervisor && hd.supervisor.id === personId) {
+      hd.supervisor = null; _modifiedHalls.add(hname);
+    }
+    hd.monitors = hd.monitors.map(m => {
+      if (m && m.id === personId) { _modifiedHalls.add(hname); return null; }
+      return m;
+    });
+  }
+  lastReserve   = lastReserve.filter(s => s.id !== personId);
+  lastRemaining = lastRemaining.filter(s => s.id !== personId);
+}
+
 function saveEditHall() {
   if (!_editHall || !lastDist[_editHall]) return;
+  _modifiedHalls = new Set();
   const d = lastDist[_editHall];
 
-  // Supervisor: simple select only
+  // Supervisor: simple select only — remove from other halls if changed
   const supId = document.getElementById('ehm-sup').value;
-  d.supervisor = supId ? (STAFF.find(s => s.id === parseInt(supId)) || null) : null;
+  const newSup = supId ? (STAFF.find(s => s.id === parseInt(supId)) || null) : null;
+  if (newSup && (!d.supervisor || d.supervisor.id !== newSup.id)) {
+    _removePersonFromOtherHalls(newSup.id, _editHall);
+  }
+  d.supervisor = newSup;
 
   // Monitors: process import → transfer → regular dropdown (priority order)
   d.monitors = d.monitors.map((orig, i) => {
@@ -2245,7 +2453,7 @@ function saveEditHall() {
     const xferSlot = document.getElementById(`ehm-xfer-slot-${i}`)?.value;
     const mid      = document.getElementById(`ehm-mon-${i}`)?.value;
 
-    // 1. Import from another hall
+    // 1. Import from another hall — null out the source slot
     if (impHall && impPer && lastDist[impHall]) {
       const src = lastDist[impHall];
       let person = null;
@@ -2255,6 +2463,7 @@ function saveEditHall() {
         const si = parseInt(impPer.slice(4));
         person = src.monitors[si]; src.monitors[si] = null;
       }
+      if (person) _modifiedHalls.add(impHall);
       return person;
     }
 
@@ -2266,11 +2475,19 @@ function saveEditHall() {
       } else if (xferSlot.startsWith('mon:')) {
         dst.monitors[parseInt(xferSlot.slice(4))] = orig;
       }
+      _modifiedHalls.add(_editHall);
       return null;
     }
 
-    // 3. Regular dropdown replacement
-    return mid ? (STAFF.find(s => s.id === parseInt(mid)) || null) : null;
+    // 3. Regular dropdown replacement — remove from other halls if different person
+    if (mid) {
+      const person = STAFF.find(s => s.id === parseInt(mid)) || null;
+      if (person && (!orig || orig.id !== person.id)) {
+        _removePersonFromOtherHalls(person.id, _editHall);
+      }
+      return person;
+    }
+    return null;
   });
 
   // Recalculate remaining & reserve
@@ -2290,8 +2507,8 @@ function saveEditHall() {
   document.getElementById('s-reserve').textContent  = lastReserve.length;
   document.getElementById('s-remain').textContent   = lastRemaining.length;
 
-  renderResults(lastDist, lastReserve, lastRemaining, day, 0, lastExcludedNotes);
-  logActivity('تعديل يدوي', `القاعة: ${_editHall}`);
+  renderResults(lastDist, lastReserve, lastRemaining, day, 0, lastExcludedNotes, _modifiedHalls);
+  logActivity('تعديل يدوي', `القاعة: ${_editHall}${_modifiedHalls.size?' | قاعات متأثرة: '+[..._modifiedHalls].join('، '):''}`);
   closeEditHallModal();
 }
 
