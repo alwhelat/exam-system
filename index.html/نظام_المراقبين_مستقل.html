@@ -2889,13 +2889,12 @@ function toggleAtt(recId, hallName, type, idx, status) {
 function markAllPresent() {
   if (!_attRecId) return;
   const rec = RECORDS.find(r => r.id === _attRecId); if (!rec) return;
-  const _isAttRole = (() => { const s = getSession(); return s && s.role === 'attendance'; })();
   for (const h of rec.halls) {
     const ah = _getAttHall(_attRecId, h.hall);
     if (h.supervisor) ah.sup = 'present';
     h.monitors.forEach((m, i) => { if (m) { while (ah.monitors.length <= i) ah.monitors.push(null); ah.monitors[i] = 'present'; } });
   }
-  if (rec.reserve && rec.reserve.length && !_isAttRole) {
+  if (rec.reserve && rec.reserve.length) {
     const ah = _getAttHall(_attRecId, '__احتياط__');
     rec.reserve.forEach((name, i) => { while (ah.monitors.length <= i) ah.monitors.push(null); ah.monitors[i] = 'present'; });
   }
@@ -2912,7 +2911,6 @@ function renderAttendanceSheet() {
   const rec = RECORDS.find(r => r.id === _attRecId);
   if (!rec) { sheet.innerHTML = ''; if (statsWrap) statsWrap.style.display = 'none'; return; }
 
-  const _isAttRole = (() => { const s = getSession(); return s && s.role === 'attendance'; })();
   let presentCount = 0, absentCount = 0, pendingCount = 0;
 
   function getStatus(hallName, type, idx) {
@@ -2933,8 +2931,8 @@ function renderAttendanceSheet() {
       }
     });
   }
-  // Reserve stats (not shown for attendance supervisor role)
-  if (rec.reserve && !_isAttRole) {
+  // Reserve stats
+  if (rec.reserve) {
     rec.reserve.forEach((name, i) => {
       const s = getStatus('__احتياط__', 'mon', i);
       if (s === 'present') presentCount++; else if (s === 'absent') absentCount++; else pendingCount++;
@@ -2998,8 +2996,8 @@ function renderAttendanceSheet() {
     html += `</div></div>`;
   }
 
-  // Reserve attendance section (hidden for attendance supervisor role)
-  if (rec.reserve && rec.reserve.length && !_isAttRole) {
+  // Reserve attendance section
+  if (rec.reserve && rec.reserve.length) {
     let resPT = 0, resAT = 0;
     rec.reserve.forEach((name, i) => {
       const s = getStatus('__احتياط__', 'mon', i);
