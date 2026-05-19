@@ -2813,6 +2813,11 @@ function markAllPresent() {
     if (h.supervisor) ah.sup = 'present';
     h.monitors.forEach((m, i) => { if (m) { while (ah.monitors.length <= i) ah.monitors.push(null); ah.monitors[i] = 'present'; } });
   }
+  // Include reserve
+  if (rec.reserve && rec.reserve.length) {
+    const ah = _getAttHall(_attRecId, '__احتياط__');
+    rec.reserve.forEach((name, i) => { while (ah.monitors.length <= i) ah.monitors.push(null); ah.monitors[i] = 'present'; });
+  }
   lsSet(LS_ATTENDANCE, ATTENDANCE);
   fbSaveAttendance(ATTENDANCE);
   renderAttendanceSheet();
@@ -2844,6 +2849,13 @@ function renderAttendanceSheet() {
         const s = getStatus(h.hall, 'mon', i);
         if (s === 'present') presentCount++; else if (s === 'absent') absentCount++; else pendingCount++;
       }
+    });
+  }
+  // Reserve stats
+  if (rec.reserve) {
+    rec.reserve.forEach((name, i) => {
+      const s = getStatus('__احتياط__', 'mon', i);
+      if (s === 'present') presentCount++; else if (s === 'absent') absentCount++; else pendingCount++;
     });
   }
 
@@ -2902,6 +2914,32 @@ function renderAttendanceSheet() {
     html += `</div></div>`;
   }
 
+  // Reserve attendance section
+  if (rec.reserve && rec.reserve.length) {
+    let resPT = 0, resAT = 0;
+    rec.reserve.forEach((name, i) => {
+      const s = getStatus('__احتياط__', 'mon', i);
+      if (s === 'present') resPT++; else if (s === 'absent') resAT++;
+    });
+    html += `<div class="att-hall" style="border:2px solid #fed7aa">
+      <div class="att-hall-hdr" style="background:#fff7ed;border-bottom:1px solid #fed7aa">
+        <span class="att-hall-title" style="color:#92400e">⚡ قائمة الاحتياط (${rec.reserve.length} شخص)</span>
+        <span class="att-hall-tally">
+          <span style="color:#15803d;font-weight:800">✔ ${resPT}</span>
+          <span style="color:#b91c1c;font-weight:800">✗ ${resAT}</span>
+        </span>
+      </div>
+      <div class="att-hall-body">`;
+    rec.reserve.forEach((name, i) => {
+      html += `<div class="att-row">
+        <span class="att-role-tag" style="background:#fff7ed;color:#92400e;border:1px solid #fed7aa;border-radius:20px">احتياط</span>
+        <span class="att-name">${escHtml(name)}</span>
+        ${attBtns('__احتياط__', 'mon', i, name)}
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
   sheet.innerHTML = html;
 }
 
@@ -2924,6 +2962,19 @@ function exportAttendancePDF() {
     }
     if (h.supervisor) addPerson(h.supervisor, 'مشرف القاعة', ah.sup || null, h.supervisorDept || '');
     h.monitors.forEach((m, i) => { if (m) addPerson(m, 'مراقب '+(i+1), (ah.monitors||[])[i] || null, (h.monitorDepts||[])[i] || ''); });
+  }
+  // Reserve members
+  if (rec.reserve && rec.reserve.length) {
+    const rah = att['__احتياط__'] || {};
+    rec.reserve.forEach((name, i) => {
+      const sm = STAFF.find(s => s.name === name);
+      const dept = (sm && sm.dept) ? sm.dept : '—';
+      const obj = {hall: 'الاحتياط', role: 'احتياط', name, dept};
+      const status = (rah.monitors || [])[i] || null;
+      if (status === 'present') present.push(obj);
+      else if (status === 'absent') absent.push(obj);
+      else pending.push(obj);
+    });
   }
 
   const th = 'background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;border:1pt solid #374151;font-weight:700;font-size:10pt';
