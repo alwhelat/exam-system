@@ -839,6 +839,7 @@ let ATTENDANCE = lsGet(LS_ATTENDANCE, {});
 let STAFF_NOTES = lsGet(LS_STAFF_NOTES, {}); // { [name]: noteText } — manual overrides
 let TAKMILI_HALLS = new Set();
 let _attRecId = null;
+let _attSheetListenerAdded = false;
 
 // ─────────────────────────────────────────
 // LOCAL STORAGE HELPERS
@@ -1310,7 +1311,7 @@ function histBadge(name){
     ${h.count} مرة${h.count>0?' — آخرها: '+last.day+' '+last.date:''}${tqBadge}
   </span>`;
 }
-function escHtml(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 function personLine(p){
   if(!p) return '<span style="color:#bbb">— غير متوفر</span>';
@@ -2908,6 +2909,18 @@ function renderAttendanceSheet() {
   const sheet = document.getElementById('att-sheet');
   const statsWrap = document.getElementById('att-stats-wrap');
   if (!sheet) return;
+  if (!_attSheetListenerAdded) {
+    _attSheetListenerAdded = true;
+    sheet.addEventListener('click', function(e) {
+      const btn = e.target.closest('[data-att-action]');
+      if (!btn || !_attRecId) return;
+      const hall   = btn.getAttribute('data-att-hall');
+      const type   = btn.getAttribute('data-att-type');
+      const idx    = parseInt(btn.getAttribute('data-att-idx'), 10);
+      const action = btn.getAttribute('data-att-action');
+      toggleAtt(_attRecId, hall, type, idx, action);
+    });
+  }
   if (!_attRecId) { sheet.innerHTML = ''; if (statsWrap) statsWrap.style.display = 'none'; return; }
   const rec = RECORDS.find(r => r.id === _attRecId);
   if (!rec) { sheet.innerHTML = ''; if (statsWrap) statsWrap.style.display = 'none'; return; }
@@ -2948,13 +2961,15 @@ function renderAttendanceSheet() {
 
   const tqSet = new Set(rec.takmiliHalls || []);
 
-  function attBtns(hallName, type, idx, name) {
+  function attBtns(hallName, type, idx) {
     const status = getStatus(hallName, type, idx);
     const pOn = status === 'present' ? ' on' : '';
     const aOn = status === 'absent'  ? ' on' : '';
+    const hEsc = escHtml(hallName);
+    const tEsc = escHtml(type);
     return `<div class="att-btns">
-      <button class="att-btn-p${pOn}" onclick="toggleAtt(${_attRecId},'${escHtml(hallName)}','${type}',${idx},'present')" title="حاضر">✔</button>
-      <button class="att-btn-a${aOn}" onclick="toggleAtt(${_attRecId},'${escHtml(hallName)}','${type}',${idx},'absent')"  title="غائب">✗</button>
+      <button class="att-btn-p${pOn}" data-att-hall="${hEsc}" data-att-type="${tEsc}" data-att-idx="${idx}" data-att-action="present" title="حاضر">✔</button>
+      <button class="att-btn-a${aOn}" data-att-hall="${hEsc}" data-att-type="${tEsc}" data-att-idx="${idx}" data-att-action="absent"  title="غائب">✗</button>
     </div>`;
   }
 
@@ -2968,7 +2983,7 @@ function renderAttendanceSheet() {
 
     html += `<div class="att-hall${isTq?' hall-block tq':''}">
       <div class="att-hall-hdr">
-        <span class="att-hall-title">🏛 ${tqMark}${h.hall}</span>
+        <span class="att-hall-title">🏛 ${tqMark}${escHtml(h.hall)}</span>
         <span class="att-hall-tally">
           <span style="color:#15803d;font-weight:800">✔ ${pTally}</span>
           <span style="color:#b91c1c;font-weight:800">✗ ${aTally}</span>
@@ -2979,16 +2994,16 @@ function renderAttendanceSheet() {
     if (h.supervisor) {
       html += `<div class="att-row">
         <span class="att-role-tag rs">مشرف</span>
-        <span class="att-name">${h.supervisor}</span>
-        ${attBtns(h.hall, 'sup', 0, h.supervisor)}
+        <span class="att-name">${escHtml(h.supervisor)}</span>
+        ${attBtns(h.hall, 'sup', 0)}
       </div>`;
     }
     h.monitors.forEach((m, i) => {
       if (!m) return;
       html += `<div class="att-row">
         <span class="att-role-tag rm">مراقب ${i+1}</span>
-        <span class="att-name">${m}</span>
-        ${attBtns(h.hall, 'mon', i, m)}
+        <span class="att-name">${escHtml(m)}</span>
+        ${attBtns(h.hall, 'mon', i)}
       </div>`;
     });
 
@@ -3015,7 +3030,7 @@ function renderAttendanceSheet() {
       html += `<div class="att-row">
         <span class="att-role-tag" style="background:#fff7ed;color:#92400e;border:1px solid #fed7aa;border-radius:20px">احتياط</span>
         <span class="att-name">${escHtml(name)}</span>
-        ${attBtns('__احتياط__', 'mon', i, name)}
+        ${attBtns('__احتياط__', 'mon', i)}
       </div>`;
     });
     html += `</div></div>`;
@@ -3031,18 +3046,18 @@ function exportAttendancePDF() {
   const day = rec.day, date = (rec.date||'').replace(/-/g,'/'), ses = rec.session||'';
 
   const present = [], absent = [], pending = [];
+  function addPerson(name, role, status, storedDept, hallName) {
+    const sm = STAFF.find(s => s.name === name);
+    const dept = (sm && sm.dept) ? sm.dept : (storedDept || '—');
+    const obj = {hall: hallName, role, name, dept};
+    if (status === 'present') present.push(obj);
+    else if (status === 'absent') absent.push(obj);
+    else pending.push(obj);
+  }
   for (const h of rec.halls) {
     const ah = att[h.hall] || {};
-    function addPerson(name, role, status, storedDept) {
-      const sm = STAFF.find(s => s.name === name);
-      const dept = (sm && sm.dept) ? sm.dept : (storedDept || '—');
-      const obj = {hall: h.hall, role, name, dept};
-      if (status === 'present') present.push(obj);
-      else if (status === 'absent') absent.push(obj);
-      else pending.push(obj);
-    }
-    if (h.supervisor) addPerson(h.supervisor, 'مشرف القاعة', ah.sup || null, h.supervisorDept || '');
-    h.monitors.forEach((m, i) => { if (m) addPerson(m, 'مراقب '+(i+1), (ah.monitors||[])[i] || null, (h.monitorDepts||[])[i] || ''); });
+    if (h.supervisor) addPerson(h.supervisor, 'مشرف القاعة', ah.sup || null, h.supervisorDept || '', h.hall);
+    h.monitors.forEach((m, i) => { if (m) addPerson(m, 'مراقب '+(i+1), (ah.monitors||[])[i] || null, (h.monitorDepts||[])[i] || '', h.hall); });
   }
   // Reserve members
   if (rec.reserve && rec.reserve.length) {
