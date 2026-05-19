@@ -586,11 +586,11 @@ tr:hover td{background:#eef2ff}
 
 <!-- ══ EDIT HALL MODAL ══ -->
 <div class="auth-modal-ov" id="edit-hall-modal">
-  <div class="auth-modal" style="max-width:520px;width:94vw;max-height:88vh;overflow-y:auto">
+  <div class="auth-modal" style="max-width:680px;width:96vw;max-height:92vh;overflow-y:auto">
     <h3 style="margin-bottom:14px">✏ تعديل توزيع القاعة: <span id="ehm-title" style="color:#0d1b6e"></span></h3>
     <div id="ehm-fields"></div>
     <div class="auth-msg" id="ehm-msg"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
       <button class="btn" onclick="closeEditHallModal()">إلغاء</button>
       <button class="btn bp" onclick="saveEditHall()">✔ حفظ التعديل</button>
     </div>
@@ -2034,14 +2034,17 @@ function openEditHallModal(hname) {
   document.getElementById('ehm-title').textContent = hname;
   document.getElementById('ehm-msg').textContent = '';
 
-  // Build supervisor dropdown (PhDs only)
   const supOpts = `<option value="">— لا يوجد مشرف —</option>` +
     STAFF.filter(s => s.has_phd).map(s =>
       `<option value="${s.id}"${d.supervisor && d.supervisor.id === s.id ? ' selected' : ''}>${s.name}${s.dept ? ' — ' + s.dept : ''}</option>`
     ).join('');
 
-  let html = `<div style="margin-bottom:10px">
-    <label class="auth-field-lbl">👤 مشرف القاعة</label>
+  const otherHalls = Object.keys(lastDist).filter(h => h !== hname);
+  const hallOptsHtml = `<option value="">— اختر قاعة —</option>` +
+    otherHalls.map(h => `<option value="${escHtml(h)}">${escHtml(h)}</option>`).join('');
+
+  let html = `<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:2px solid #e5e7eb">
+    <label class="auth-field-lbl" style="font-weight:800;color:#1e3a8a">👤 مشرف القاعة</label>
     <select class="auth-field" id="ehm-sup" style="margin-bottom:0">${supOpts}</select>
   </div>`;
 
@@ -2050,14 +2053,80 @@ function openEditHallModal(hname) {
       STAFF.map(s =>
         `<option value="${s.id}"${m && m.id === s.id ? ' selected' : ''}>${s.name}${s.dept ? ' — ' + s.dept : ''}</option>`
       ).join('');
-    html += `<div style="margin-bottom:10px">
-      <label class="auth-field-lbl">مراقب ${i + 1}</label>
-      <select class="auth-field" id="ehm-mon-${i}" style="margin-bottom:0">${monOpts}</select>
+
+    const curLabel = m
+      ? `<span style="font-weight:400;color:#374151"> — ${escHtml(m.name)}</span>`
+      : `<span style="color:#94a3b8;font-weight:400"> — فارغ</span>`;
+
+    html += `<div style="margin-bottom:10px;padding:10px 12px;background:#f8faff;border-radius:9px;border:1.5px solid #dde1f0">
+      <div style="font-size:12px;font-weight:800;color:#1e3a8a;margin-bottom:9px">مراقب ${i + 1}${curLabel}</div>
+
+      <div style="margin-bottom:7px">
+        <div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:3px">تعيين من المتبقين:</div>
+        <select class="auth-field" id="ehm-mon-${i}" style="margin-bottom:0;font-size:12px">${monOpts}</select>
+      </div>
+
+      <div style="margin-bottom:${m ? '7px' : '0'};padding:7px 9px;background:#eff6ff;border-radius:7px;border:1px solid #bfdbfe">
+        <div style="font-size:10px;font-weight:700;color:#1d4ed8;margin-bottom:5px">📥 استيراد من قاعة موزعة:</div>
+        <div style="display:flex;gap:5px">
+          <select class="auth-field" id="ehm-imp-hall-${i}" style="margin-bottom:0;font-size:11px;flex:1;min-width:0" onchange="updateImportPersons(${i})">
+            ${hallOptsHtml}
+          </select>
+          <select class="auth-field" id="ehm-imp-per-${i}" style="margin-bottom:0;font-size:11px;flex:1.3;min-width:0">
+            <option value="">— اختر القاعة أولاً —</option>
+          </select>
+        </div>
+      </div>
+
+      ${m ? `<div style="padding:7px 9px;background:#fff7ed;border-radius:7px;border:1px solid #fed7aa">
+        <div style="font-size:10px;font-weight:700;color:#c2410c;margin-bottom:5px">📤 تحويل "${escHtml(m.name)}" إلى قاعة أخرى:</div>
+        <div style="display:flex;gap:5px">
+          <select class="auth-field" id="ehm-xfer-hall-${i}" style="margin-bottom:0;font-size:11px;flex:1;min-width:0" onchange="updateXferSlots(${i})">
+            ${hallOptsHtml}
+          </select>
+          <select class="auth-field" id="ehm-xfer-slot-${i}" style="margin-bottom:0;font-size:11px;flex:1.3;min-width:0">
+            <option value="">— اختر القاعة أولاً —</option>
+          </select>
+        </div>
+      </div>` : ''}
     </div>`;
   });
 
   document.getElementById('ehm-fields').innerHTML = html;
   document.getElementById('edit-hall-modal').classList.add('show');
+}
+
+function updateImportPersons(i) {
+  const hall = document.getElementById(`ehm-imp-hall-${i}`)?.value;
+  const sel  = document.getElementById(`ehm-imp-per-${i}`);
+  if (!sel) return;
+  if (!hall || !lastDist[hall]) {
+    sel.innerHTML = '<option value="">— اختر القاعة أولاً —</option>'; return;
+  }
+  const d = lastDist[hall];
+  let opts = '<option value="">— اختر شخصاً —</option>';
+  if (d.supervisor) opts += `<option value="sup">${escHtml(d.supervisor.name)}${d.supervisor.dept ? ' — ' + escHtml(d.supervisor.dept) : ''} (مشرف)</option>`;
+  d.monitors.forEach((m, mi) => {
+    if (m) opts += `<option value="mon:${mi}">${escHtml(m.name)}${m.dept ? ' — ' + escHtml(m.dept) : ''} (مراقب ${mi + 1})</option>`;
+  });
+  if (opts === '<option value="">— اختر شخصاً —</option>') opts += '<option disabled>لا يوجد أحد معين في هذه القاعة</option>';
+  sel.innerHTML = opts;
+}
+
+function updateXferSlots(i) {
+  const hall = document.getElementById(`ehm-xfer-hall-${i}`)?.value;
+  const sel  = document.getElementById(`ehm-xfer-slot-${i}`);
+  if (!sel) return;
+  if (!hall || !lastDist[hall]) {
+    sel.innerHTML = '<option value="">— اختر القاعة أولاً —</option>'; return;
+  }
+  const d = lastDist[hall];
+  let opts = '<option value="">— اختر المكان —</option>';
+  opts += `<option value="sup">مشرف القاعة${d.supervisor ? ' ← ' + escHtml(d.supervisor.name) : ' (فارغ)'}</option>`;
+  d.monitors.forEach((m, mi) => {
+    opts += `<option value="mon:${mi}">مراقب ${mi + 1}${m ? ' ← ' + escHtml(m.name) : ' (فارغ)'}</option>`;
+  });
+  sel.innerHTML = opts;
 }
 
 function closeEditHallModal() {
@@ -2069,11 +2138,43 @@ function saveEditHall() {
   if (!_editHall || !lastDist[_editHall]) return;
   const d = lastDist[_editHall];
 
+  // Supervisor: simple select only
   const supId = document.getElementById('ehm-sup').value;
   d.supervisor = supId ? (STAFF.find(s => s.id === parseInt(supId)) || null) : null;
 
-  d.monitors = d.monitors.map((_, i) => {
-    const mid = document.getElementById('ehm-mon-' + i).value;
+  // Monitors: process import → transfer → regular dropdown (priority order)
+  d.monitors = d.monitors.map((orig, i) => {
+    const impHall  = document.getElementById(`ehm-imp-hall-${i}`)?.value;
+    const impPer   = document.getElementById(`ehm-imp-per-${i}`)?.value;
+    const xferHall = document.getElementById(`ehm-xfer-hall-${i}`)?.value;
+    const xferSlot = document.getElementById(`ehm-xfer-slot-${i}`)?.value;
+    const mid      = document.getElementById(`ehm-mon-${i}`)?.value;
+
+    // 1. Import from another hall
+    if (impHall && impPer && lastDist[impHall]) {
+      const src = lastDist[impHall];
+      let person = null;
+      if (impPer === 'sup') {
+        person = src.supervisor; src.supervisor = null;
+      } else if (impPer.startsWith('mon:')) {
+        const si = parseInt(impPer.slice(4));
+        person = src.monitors[si]; src.monitors[si] = null;
+      }
+      return person;
+    }
+
+    // 2. Transfer current person to another hall
+    if (orig && xferHall && xferSlot && lastDist[xferHall]) {
+      const dst = lastDist[xferHall];
+      if (xferSlot === 'sup') {
+        dst.supervisor = orig;
+      } else if (xferSlot.startsWith('mon:')) {
+        dst.monitors[parseInt(xferSlot.slice(4))] = orig;
+      }
+      return null;
+    }
+
+    // 3. Regular dropdown replacement
     return mid ? (STAFF.find(s => s.id === parseInt(mid)) || null) : null;
   });
 
