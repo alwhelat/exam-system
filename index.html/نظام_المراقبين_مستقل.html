@@ -780,7 +780,7 @@ async function loadFirebaseData() {
     if (!snap.exists) return;
     ATTENDANCE = snap.data().data || {};
     lsSet(LS_ATTENDANCE, ATTENDANCE);
-    if (snap.metadata.hasPendingWrites) return; // own local write — DOM already updated in-place
+    if (Date.now() - _attLastSaveTs < 5000) return; // own write in progress — DOM already updated in-place
     const ap2 = document.getElementById('tab-attendance');
     if (ap2 && ap2.classList.contains('on')) renderAttendanceSheet();
   });
@@ -805,6 +805,7 @@ function fbSaveHistory(hist) {
   db.collection('system').doc('history').set({ data: hist }).catch(e => console.error('fbSaveHistory', e));
 }
 function fbSaveAttendance(att) {
+  _attLastSaveTs = Date.now();
   db.collection('system').doc('attendance').set({ data: att }).catch(e => console.error('fbSaveAttendance', e));
 }
 
@@ -840,6 +841,7 @@ let ATTENDANCE = lsGet(LS_ATTENDANCE, {});
 let STAFF_NOTES = lsGet(LS_STAFF_NOTES, {}); // { [name]: noteText } — manual overrides
 let TAKMILI_HALLS = new Set();
 let _attRecId = null;
+let _attLastSaveTs = 0;
 
 // ─────────────────────────────────────────
 // LOCAL STORAGE HELPERS
@@ -2943,8 +2945,7 @@ function toggleAtt(recId, hallName, type, idx, status) {
   }
   lsSet(LS_ATTENDANCE, ATTENDANCE);
   fbSaveAttendance(ATTENDANCE);
-  _refreshOneAtt(hallName, type, idx);
-  _refreshAttStats();
+  renderAttendanceSheet();
 }
 
 function markAllPresent() {
@@ -2961,28 +2962,7 @@ function markAllPresent() {
   }
   lsSet(LS_ATTENDANCE, ATTENDANCE);
   fbSaveAttendance(ATTENDANCE);
-  // In-place DOM update: flip all buttons to present
-  document.querySelectorAll('[data-att-action="present"]').forEach(b => b.classList.add('on'));
-  document.querySelectorAll('[data-att-action="absent"]').forEach(b => b.classList.remove('on'));
-  // Update each hall tally
-  document.querySelectorAll('#att-sheet .att-hall').forEach(hallDiv => {
-    const tally = hallDiv.querySelector('.att-hall-tally');
-    if (!tally) return;
-    const anyBtn = hallDiv.querySelector('[data-att-action]');
-    if (!anyBtn) return;
-    const hallName = anyBtn.getAttribute('data-att-hall');
-    let total = 0;
-    if (hallName === '__احتياط__') {
-      total = hallDiv.querySelectorAll('[data-att-action="present"]').length;
-    } else {
-      const hh = rec.halls.find(x => x.hall === hallName);
-      if (hh) { if (hh.supervisor) total++; hh.monitors.forEach(m => { if(m) total++; }); }
-    }
-    const spans = tally.querySelectorAll(':scope > span');
-    if(spans[0]) spans[0].textContent = `✔ ${total}`;
-    if(spans[1]) spans[1].textContent = `✗ 0`;
-  });
-  _refreshAttStats();
+  renderAttendanceSheet();
 }
 
 function renderAttendanceSheet() {
