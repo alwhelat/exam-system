@@ -362,6 +362,10 @@ tr:hover td{background:#eef2ff}
         <div><label>التاريخ</label><input type="date" id="sel-date"></div>
         <div><label>الدورة (اختياري)</label><input type="text" id="sel-session" placeholder="مثال: الصباحية"></div>
       </div>
+      <div style="margin-top:8px">
+        <label>ملاحظات وتعليمات اللجنة الامتحانية <span style="font-weight:400;color:#888">(تظهر في أعلى PDF)</span></label>
+        <textarea id="sel-notes" rows="3" placeholder="مثال: يُرجى الالتزام بالحضور قبل بدء الامتحان بـ30 دقيقة — أي غياب يستوجب تقديم عذر رسمي..." style="width:100%;padding:7px 10px;font-size:12px;border:1px solid #c8cfe8;border-radius:6px;font-family:inherit;resize:vertical;line-height:1.6;color:#222;direction:rtl"></textarea>
+      </div>
       <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
           <input type="checkbox" id="chk-excl-comm" checked style="width:auto;accent-color:#0d1b6e">
@@ -1090,6 +1094,7 @@ function saveCurrentRecord(){
   const day=document.getElementById('sel-day').value;
   const date=document.getElementById('sel-date').value||new Date().toISOString().slice(0,10);
   const session=document.getElementById('sel-session').value;
+  const notes=document.getElementById('sel-notes').value.trim();
   let assigned=0;
   for(const d of Object.values(lastDist)){
     if(d.supervisor)assigned++;
@@ -1108,6 +1113,7 @@ function saveCurrentRecord(){
       monitorDepts:d.monitors.map(m=>m?(m.dept||''):'')
     })),
     reserve:lastReserve.map(s=>s.name),
+    notes: notes,
     stats:{halls:Object.keys(lastDist).length, assigned, reserve:lastReserve.length,
            takmili:activeTqHalls.length}
   };
@@ -1397,8 +1403,9 @@ function exportWord(){
   const rawDate=document.getElementById('sel-date').value;
   const date=rawDate||new Date().toLocaleDateString('ar-IQ');
   const session=document.getElementById('sel-session').value;
+  const notes=document.getElementById('sel-notes').value.trim();
   logActivity('تصدير Word',`اليوم: ${day} | التاريخ: ${date}`);
-  generateWordDoc(lastDist,lastReserve,day,date,session,rawDate,[...TAKMILI_HALLS]);
+  generateWordDoc(lastDist,lastReserve,day,date,session,rawDate,[...TAKMILI_HALLS],notes);
 }
 
 function exportRecordWord(id){
@@ -1418,7 +1425,7 @@ function exportRecordWord(id){
   }
   const reserve=rec.reserve.map(n=>STAFF.find(s=>s.name===n)||{name:n,title_code:'other',mtype:'',gender:'male'});
   const date=rec.date?rec.date.replace(/-/g,'/'):'';
-  generateWordDoc(dist,reserve,rec.day,date,rec.session||'',rec.date||'',rec.takmiliHalls||[]);
+  generateWordDoc(dist,reserve,rec.day,date,rec.session||'',rec.date||'',rec.takmiliHalls||[],rec.notes||'');
 }
 
 function _buildWordRows(entries, tqSet){
@@ -1448,7 +1455,7 @@ function _buildWordRows(entries, tqSet){
   return rows;
 }
 
-function generateWordDoc(dist,reserve,day,date,session,rawDate,takmiliHalls=[]){
+function generateWordDoc(dist,reserve,day,date,session,rawDate,takmiliHalls=[],notes=''){
   const tqSet=new Set(takmiliHalls);
   const logoDataUrl=localStorage.getItem(LS_LOGO)||'';
   const tqEntries=Object.entries(dist).filter(([h])=>tqSet.has(h));
@@ -1494,6 +1501,10 @@ function generateWordDoc(dist,reserve,day,date,session,rawDate,takmiliHalls=[]){
   </div>
   <div style="display:table-cell;width:75pt"></div>
 </div>
+${notes?`<div style="margin-bottom:10pt;padding:8pt 12pt;border:1.5pt solid #fbbf24;border-radius:6pt;background:#fffbeb;direction:rtl">
+  <div style="font-size:9pt;font-weight:bold;color:#92400e;margin-bottom:4pt">ملاحظات وتعليمات اللجنة الامتحانية:</div>
+  <div style="font-size:10pt;color:#1a1a1a;white-space:pre-wrap;line-height:1.7">${notes.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+</div>`:''}
 <table>
   <thead><tr>
     <th style="${th};width:15%;text-align:center">القاعة</th>
@@ -1506,7 +1517,8 @@ function generateWordDoc(dist,reserve,day,date,session,rawDate,takmiliHalls=[]){
     ${regRows?`<tr><td colspan="4" style="background:#1e3a8a;color:#fff;font-weight:bold;font-size:12pt;text-align:center;padding:6pt;border:1.5pt solid #374151">مراقبات الامتحان النهائي (${regEntries.length} قاعة)</td></tr>${regRows}`:''}
   </tbody>
 </table>
-${reserve.length?`<h2 style="font-size:13pt;color:#92400e;margin:14pt 0 6pt;border-right:4pt solid #f59e0b;padding-right:7pt">قائمة الاحتياط (${reserve.length} شخص)</h2>
+${reserve.length?`<div style="page-break-before:always">
+<div style="font-size:13pt;color:#92400e;font-weight:bold;margin:0 0 8pt;border-right:4pt solid #f59e0b;padding-right:7pt">قائمة الاحتياط (${reserve.length} شخص)</div>
 <table>
   <thead><tr>
     <th style="${th};width:7%;text-align:center">#</th>
@@ -1515,11 +1527,15 @@ ${reserve.length?`<h2 style="font-size:13pt;color:#92400e;margin:14pt 0 6pt;bord
     <th style="${th};width:28%;text-align:center">التوقيع</th>
   </tr></thead>
   <tbody>${resRows}</tbody>
-</table>`:''}
+</table>
 <div class="footer">
   تم الإنشاء: ${now} &nbsp;|&nbsp; القاعات: ${Object.keys(dist).length}${tqEntries.length?' (منها '+tqEntries.length+' تقويمي)':''}
   &nbsp;|&nbsp; الاحتياط: ${reserve.length} &nbsp;|&nbsp; جامعة الفارابي — لجنة الامتحانات
-</div></body></html>`;
+</div></div>`:`<div class="footer">
+  تم الإنشاء: ${now} &nbsp;|&nbsp; القاعات: ${Object.keys(dist).length}${tqEntries.length?' (منها '+tqEntries.length+' تقويمي)':''}
+  &nbsp;|&nbsp; جامعة الفارابي — لجنة الامتحانات
+</div>`}
+</body></html>`;
   const ds=(rawDate||new Date().toISOString().slice(0,10)).replace(/\//g,'-');
   try{
     const blob=typeof htmlDocx!=='undefined'?htmlDocx.asBlob(html):new Blob([html],{type:'application/msword'});
@@ -2092,8 +2108,9 @@ function exportPDF() {
   const rawDate = document.getElementById('sel-date').value;
   const date    = rawDate || new Date().toLocaleDateString('ar-IQ');
   const session = document.getElementById('sel-session').value;
+  const notes   = document.getElementById('sel-notes').value.trim();
   logActivity('تصدير PDF', `اليوم: ${day} | التاريخ: ${date}`);
-  _genPDF(lastDist, lastReserve, day, date, session, rawDate, [...TAKMILI_HALLS]);
+  _genPDF(lastDist, lastReserve, day, date, session, rawDate, [...TAKMILI_HALLS], notes);
 }
 
 function exportRecordPDF(id) {
@@ -2113,7 +2130,7 @@ function exportRecordPDF(id) {
   }
   const reserve = rec.reserve.map(n => STAFF.find(s => s.name === n) || {name:n, title_code:'other', mtype:'', gender:'male', dept:''});
   const date = rec.date ? rec.date.replace(/-/g, '/') : '';
-  _genPDF(dist, reserve, rec.day, date, rec.session || '', rec.date || '', rec.takmiliHalls || []);
+  _genPDF(dist, reserve, rec.day, date, rec.session || '', rec.date || '', rec.takmiliHalls || [], rec.notes || '');
 }
 
 function _buildDistRows(entries, tqSet) {
@@ -2144,7 +2161,7 @@ function _buildDistRows(entries, tqSet) {
   return rows;
 }
 
-function _genPDF(dist, reserve, day, date, session, rawDate, takmiliHalls = []) {
+function _genPDF(dist, reserve, day, date, session, rawDate, takmiliHalls = [], notes = '') {
   const tqSet      = new Set(takmiliHalls);
   const logoDataUrl = localStorage.getItem(LS_LOGO) || '';
   const th         = 'background:#1E3A8A;color:#fff;padding:6pt 8pt;text-align:right;border:1pt solid #374151;font-weight:700';
@@ -2198,6 +2215,11 @@ table{border-collapse:collapse;width:100%;margin-bottom:14pt}
     <div style="display:table-cell;width:75pt"></div>
   </div>
 
+  ${notes ? `<div style="margin-bottom:10pt;padding:8pt 12pt;border:1.5pt solid #fbbf24;border-radius:6pt;background:#fffbeb;direction:rtl">
+    <div style="font-size:9pt;font-weight:800;color:#92400e;margin-bottom:4pt">ملاحظات وتعليمات اللجنة الامتحانية:</div>
+    <div style="font-size:10pt;color:#1a1a1a;white-space:pre-wrap;line-height:1.7">${notes.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+  </div>` : ''}
+
   <table>
     <thead><tr>
       <th style="${th};width:15%;text-align:center">القاعة</th>
@@ -2211,7 +2233,8 @@ table{border-collapse:collapse;width:100%;margin-bottom:14pt}
     </tbody>
   </table>
 
-  ${reserve.length ? `<h2 style="font-size:12pt;color:#92400e;border-right:3pt solid #f59e0b;padding-right:6pt;margin:10pt 0 5pt">قائمة الاحتياط (${reserve.length} شخص)</h2>
+  ${reserve.length ? `<div style="page-break-before:always">
+  <div style="font-size:12pt;color:#92400e;font-weight:800;border-right:3pt solid #f59e0b;padding-right:6pt;margin:0 0 8pt">قائمة الاحتياط (${reserve.length} شخص)</div>
   <table>
     <thead><tr>
       <th style="${th};width:7%;text-align:center">#</th>
@@ -2220,8 +2243,9 @@ table{border-collapse:collapse;width:100%;margin-bottom:14pt}
       <th style="${th};width:28%;text-align:center">التوقيع</th>
     </tr></thead>
     <tbody>${resRows}</tbody>
-  </table>` : ''}
+  </table>
   <div class="footer">تم الإنشاء: ${now} | القاعات: ${Object.keys(dist).length}${tqEntries.length?' (منها '+tqEntries.length+' تقويمي)':''} | الاحتياط: ${reserve.length} | جامعة الفارابي — لجنة الامتحانات</div>
+  </div>` : `<div class="footer">تم الإنشاء: ${now} | القاعات: ${Object.keys(dist).length}${tqEntries.length?' (منها '+tqEntries.length+' تقويمي)':''}  | جامعة الفارابي — لجنة الامتحانات</div>`}
 </div>
 </body></html>`;
 
