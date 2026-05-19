@@ -839,7 +839,6 @@ let ATTENDANCE = lsGet(LS_ATTENDANCE, {});
 let STAFF_NOTES = lsGet(LS_STAFF_NOTES, {}); // { [name]: noteText } — manual overrides
 let TAKMILI_HALLS = new Set();
 let _attRecId = null;
-let _attSheetListenerAdded = false;
 
 // ─────────────────────────────────────────
 // LOCAL STORAGE HELPERS
@@ -2856,7 +2855,7 @@ function renderAttendanceTab() {
     const ses = rec.session ? ` | ${rec.session}` : '';
     const opt = document.createElement('option');
     opt.value = rec.id;
-    opt.textContent = `${rec.day} ${dt}${ses} — ${rec.stats.halls} قاعة`;
+    opt.textContent = `${rec.day} ${dt}${ses} — ${rec.stats ? rec.stats.halls : '?'} قاعة`;
     sel.appendChild(opt);
   });
   if (prev && RECORDS.find(r => r.id === parseInt(prev))) sel.value = prev;
@@ -2909,18 +2908,6 @@ function renderAttendanceSheet() {
   const sheet = document.getElementById('att-sheet');
   const statsWrap = document.getElementById('att-stats-wrap');
   if (!sheet) return;
-  if (!_attSheetListenerAdded) {
-    _attSheetListenerAdded = true;
-    sheet.addEventListener('click', function(e) {
-      const btn = e.target.closest('[data-att-action]');
-      if (!btn || !_attRecId) return;
-      const hall   = btn.getAttribute('data-att-hall');
-      const type   = btn.getAttribute('data-att-type');
-      const idx    = parseInt(btn.getAttribute('data-att-idx'), 10);
-      const action = btn.getAttribute('data-att-action');
-      toggleAtt(_attRecId, hall, type, idx, action);
-    });
-  }
   if (!_attRecId) { sheet.innerHTML = ''; if (statsWrap) statsWrap.style.display = 'none'; return; }
   const rec = RECORDS.find(r => r.id === _attRecId);
   if (!rec) { sheet.innerHTML = ''; if (statsWrap) statsWrap.style.display = 'none'; return; }
@@ -3036,7 +3023,11 @@ function renderAttendanceSheet() {
     html += `</div></div>`;
   }
 
-  sheet.innerHTML = html;
+  if (!html) {
+    sheet.innerHTML = '<div class="alert ain" style="text-align:center;padding:18px;margin-top:8px">لا توجد قاعات في هذا السجل أو السجل فارغ</div>';
+  } else {
+    sheet.innerHTML = html;
+  }
 }
 
 function exportAttendancePDF() {
@@ -3207,6 +3198,16 @@ initLogo();
     ATTENDANCE = lsGet(LS_ATTENDANCE, {});
   }
   document.getElementById('fb-loading').style.display = 'none';
+  // ── Attendance button delegation — document-level, added once ──
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-att-action]');
+    if (!btn || !_attRecId) return;
+    const hall   = btn.getAttribute('data-att-hall');
+    const type   = btn.getAttribute('data-att-type');
+    const idx    = parseInt(btn.getAttribute('data-att-idx'), 10);
+    const action = btn.getAttribute('data-att-action');
+    toggleAtt(_attRecId, hall, type, idx, action);
+  });
   initAuth();
   updateRecordsBadge();
 })();
