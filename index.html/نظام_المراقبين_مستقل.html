@@ -641,6 +641,7 @@ tr:hover td{background:#eef2ff}
 <div id="note-popup" style="display:none;position:fixed;z-index:1100;background:#fff;border-radius:11px;box-shadow:0 8px 32px rgba(0,0,0,.18);border:1.5px solid #e0e7ff;min-width:220px;overflow:hidden">
   <div style="background:#f0f4ff;padding:9px 13px;border-bottom:1px solid #e0e7ff;font-size:12px;font-weight:800;color:#0d1b6e" id="nep-name"></div>
   <div style="padding:7px 8px;display:flex;flex-direction:column;gap:4px" id="nep-opts">
+    <button class="btn" style="font-size:12px;padding:5px 12px;text-align:right;justify-content:flex-start;background:#f0fdf4;border-color:#86efac;color:#166534;font-weight:800" onclick="applyNote('يصلح تقويمي')">✅ يصلح تقويمي</button>
     <button class="btn" style="font-size:12px;padding:5px 12px;text-align:right;justify-content:flex-start;background:#fff7ed;border-color:#fed7aa;color:#92400e" onclick="applyNote('مجاز')">📋 مجاز</button>
     <button class="btn" style="font-size:12px;padding:5px 12px;text-align:right;justify-content:flex-start;background:#fff7ed;border-color:#fed7aa;color:#92400e" onclick="applyNote('كبير سن')">👴 كبير سن</button>
     <button class="btn" style="font-size:12px;padding:5px 12px;text-align:right;justify-content:flex-start;background:#fff7ed;border-color:#fed7aa;color:#92400e" onclick="applyNote('مريض')">🏥 مريض</button>
@@ -926,10 +927,16 @@ function processStaff(ws){
     const inComm=String(row['هل لجنة امتحانية؟']||'لا').trim()==='نعم';
     const notes=String(row['ملاحظات']||row['ملاحظة']||'').trim();
     const pr=POS_RANK[pos]??1, typr=mtype==='ملاك'?10:0;
+    // تقويمي notes are distribution-participation notes, not exclusion notes
+    const isTqNote=notes==='يصلح تقويمي'||notes==='لا يصلح تقويمي';
     return{id:i,name,gender:guessGender(name),college:String(row['الكلية']||'').trim(),
       dept:String(row['القسم']||'').trim(),title_code:tc,title_rank:tr,has_phd:phd,
       mtype,type_rank:typr,pos,pos_rank:pr,days,in_committee:inComm,
-      phone:String(row['رقم الهاتف']||'').trim(),notes,has_notes:!!notes,total_rank:typr+pr+tr};
+      phone:String(row['رقم الهاتف']||'').trim(),notes,
+      has_notes:!!notes&&!isTqNote,
+      is_takmili_preferred:notes==='يصلح تقويمي',
+      is_takmili_excluded:notes==='لا يصلح تقويمي',
+      total_rank:typr+pr+tr};
   }).filter(s=>s.name&&s.name!=='nan');
 }
 function processHalls(ws){
@@ -976,7 +983,14 @@ function onBothLoaded(){
     const ss=staffWb.Sheets['الملاك']||staffWb.Sheets[staffWb.SheetNames[0]];
     STAFF=processStaff(ss);
     // Apply manual notes overrides (take priority over Excel column)
-    STAFF.forEach(s=>{ if(STAFF_NOTES[s.name]!==undefined){ s.notes=STAFF_NOTES[s.name]; s.has_notes=!!s.notes; } });
+    STAFF.forEach(s=>{ if(STAFF_NOTES[s.name]!==undefined){
+      const n=STAFF_NOTES[s.name];
+      s.notes=n;
+      const isTqN=n==='يصلح تقويمي'||n==='لا يصلح تقويمي';
+      s.has_notes=!!n&&!isTqN;
+      s.is_takmili_preferred=n==='يصلح تقويمي';
+      s.is_takmili_excluded=n==='لا يصلح تقويمي';
+    }});
     const hs=hallsWb.Sheets[hallsWb.SheetNames[0]];
     HALLS=processHalls(hs);
     if(!STAFF.length){alert('لم يُعثر على بيانات في ملف التدريسيين');return;}
@@ -1058,35 +1072,75 @@ function getAvailable(day,ec,er){
 function distribute(day,selected,ec,er){
   const avail=getAvailable(day,ec,er);
   const sups=avail.filter(s=>s.has_phd);
-  const mons=avail.filter(s=>['mm','asst'].includes(s.title_code));
-  const males=mons.filter(s=>s.gender==='male');
-  const females=mons.filter(s=>s.gender==='female');
-  const usedS=new Set(),usedM=new Set(),dist={};
+  const allMons=avail.filter(s=>['mm','asst'].includes(s.title_code));
+
+  // Separate monitor pools by takmili suitability
+  // tqPref (يصلح تقويمي): priority for تقويمي halls
+  // tqExcl (لا يصلح تقويمي): regular halls only
+  // normal: no takmili note — goes anywhere
+  const monsTqPref = allMons.filter(s=> s.is_takmili_preferred);
+  const monsTqExcl = allMons.filter(s=> s.is_takmili_excluded);
+  const monsNormal = allMons.filter(s=>!s.is_takmili_preferred&&!s.is_takmili_excluded);
+
+  // Supervisor pools
+  const supsTqPref = sups.filter(s=> s.is_takmili_preferred);
+  const supsTqExcl = sups.filter(s=> s.is_takmili_excluded);
+  const supsNormal = sups.filter(s=>!s.is_takmili_preferred&&!s.is_takmili_excluded);
+
+  const usedS=new Set(), usedM=new Set(), dist={};
+
+  function pickFrom(pool, usedA, usedB){
+    return pool.find(s=>!usedA.has(s.id)&&!usedB.has(s.id))||null;
+  }
+
   for(const hname of selected){
     const hall=HALLS.find(h=>h.name===hname); if(!hall) continue;
+    const isTq=TAKMILI_HALLS.has(hname);
     const needed=hall.monitors_needed;
-    const sup=sups.find(s=>!usedS.has(s.id)&&!usedM.has(s.id))||null;
+
+    // ── Supervisor: for تقويمي prefer tqPref sups, exclude tqExcl ──
+    let sup=null;
+    if(isTq){
+      sup = pickFrom(supsTqPref,usedS,usedM)
+         || pickFrom(supsNormal,usedS,usedM)
+         || pickFrom(supsTqExcl,usedS,usedM); // last resort
+    } else {
+      sup = pickFrom(supsTqExcl,usedS,usedM)  // tqExcl sups go to regular
+         || pickFrom(supsNormal,usedS,usedM)
+         || pickFrom(supsTqPref,usedS,usedM); // overflow
+    }
     if(sup) usedS.add(sup.id);
+
+    // ── Monitor pool for this hall ──
+    // تقويمي: tqPref first, then normal, tqExcl NOT used here
+    // regular: tqExcl first (they can ONLY go here), then normal, then tqPref overflow
+    let monPool;
+    if(isTq){
+      monPool=[...monsTqPref,...monsNormal];
+    } else {
+      monPool=[...monsTqExcl,...monsNormal,...monsTqPref];
+    }
+    const mpMales  =monPool.filter(s=>s.gender==='male');
+    const mpFemales=monPool.filter(s=>s.gender==='female');
+
     const assigns=[]; const slots=needed-1;
     if(slots>=1){
       const supGender=sup?sup.gender:null;
       let hasMale=supGender==='male', hasFemale=supGender==='female';
-      // ── شرط إلزامي: يجب وجود ذكر وأنثى في كل قاعة ──
       if(!hasFemale){
-        const f=females.find(s=>!usedM.has(s.id)&&!usedS.has(s.id));
+        const f=pickFrom(mpFemales,usedM,usedS);
         if(f){assigns.push(f);usedM.add(f.id);hasFemale=true;}
       }
       if(!hasMale && assigns.length<slots){
-        const m=males.find(s=>!usedM.has(s.id)&&!usedS.has(s.id));
+        const m=pickFrom(mpMales,usedM,usedS);
         if(m){assigns.push(m);usedM.add(m.id);hasMale=true;}
       }
-      // ── ملء المقاعد المتبقية مع الحفاظ على التوازن ──
       while(assigns.length<slots){
         const cM=assigns.filter(a=>a&&a.gender==='male').length+(supGender==='male'?1:0);
         const cF=assigns.filter(a=>a&&a.gender==='female').length+(supGender==='female'?1:0);
         let nx=cM<=cF
-          ? (males.find(s=>!usedM.has(s.id)&&!usedS.has(s.id))||mons.find(s=>!usedM.has(s.id)&&!usedS.has(s.id)))
-          : (females.find(s=>!usedM.has(s.id)&&!usedS.has(s.id))||mons.find(s=>!usedM.has(s.id)&&!usedS.has(s.id)));
+          ?(pickFrom(mpMales,usedM,usedS)||pickFrom(monPool,usedM,usedS))
+          :(pickFrom(mpFemales,usedM,usedS)||pickFrom(monPool,usedM,usedS));
         if(nx){assigns.push(nx);usedM.add(nx.id);}else assigns.push(null);
       }
     }
@@ -1285,6 +1339,8 @@ function renderResults(dist,reserve,remaining,day,genderViolations,excludedNotes
         <span class="hall-title">🏛 ${tqLabel}${modLabel}${hname}</span>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="hall-meta">مطلوب: ${d.hall.monitors_needed}</span>
+          ${isTq?`<button class="btn" style="font-size:11px;padding:3px 9px;background:#dcfce7;border-color:#86efac;color:#166534"
+            onclick="addExtraMonitorToTq(this.closest('[data-hname]').dataset.hname)">⊕ مراقب إضافي</button>`:''}
           <button class="btn" style="font-size:11px;padding:3px 9px;background:#fef9c3;border-color:#fcd34d;color:#713f12"
             onclick="openEditHallModal(this.closest('[data-hname]').dataset.hname)">✏ تعديل</button>
         </div>
@@ -1714,7 +1770,13 @@ function applyNote(note) {
   STAFF_NOTES[_noteTarget] = note;
   lsSet(LS_STAFF_NOTES, STAFF_NOTES);
   const s = STAFF.find(st => st.name === _noteTarget);
-  if (s) { s.notes = note; s.has_notes = !!note; }
+  if (s) {
+    s.notes = note;
+    const isTqN = note === 'يصلح تقويمي' || note === 'لا يصلح تقويمي';
+    s.has_notes = !!note && !isTqN;
+    s.is_takmili_preferred = note === 'يصلح تقويمي';
+    s.is_takmili_excluded  = note === 'لا يصلح تقويمي';
+  }
   closeNotePopup();
   renderStaffTable();
 }
@@ -1898,7 +1960,9 @@ function renderStaffTable(){
       <td style="font-size:11px">${s.days.join('، ')}</td>
       <td>${s.in_committee?'✔':''} ${comm}</td>
       <td style="white-space:nowrap">
-        ${s.notes?`<span style="background:#fff7ed;color:#92400e;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700">${escHtml(s.notes)}</span> `:''}
+        ${s.is_takmili_preferred?`<span style="background:#dcfce7;color:#166534;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:800;border:1px solid #86efac">✅ يصلح تقويمي</span> `:
+          s.is_takmili_excluded?`<span style="background:#fef9c3;color:#78350f;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700;border:1px solid #fde68a">⚠ لا يصلح تقويمي</span> `:
+          s.notes?`<span style="background:#fff7ed;color:#92400e;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700">${escHtml(s.notes)}</span> `:''}
         <button class="btn" style="font-size:10px;padding:1px 7px;color:#1e3a8a;border-color:#a5b4fc" onclick="openNotePopup('${escHtml(s.name)}',event)">✏</button>
       </td>
       <td style="${countStyle};text-align:center">${h.count}${tqCell}</td>
@@ -2348,11 +2412,21 @@ function openEditHallModal(hname) {
     <select class="auth-field" id="ehm-sup" style="margin-bottom:0">${supOpts}</select>
   </div>`;
 
+  const isTqHall = TAKMILI_HALLS.has(hname);
+  // For تقويمي halls: show يصلح تقويمي staff first (marked with ✅)
+  const staffForMon = isTqHall
+    ? [...STAFF.filter(s => s.is_takmili_preferred), ...STAFF.filter(s => !s.is_takmili_preferred)]
+    : STAFF;
+
   d.monitors.forEach((m, i) => {
     const monOpts = `<option value="">— لا يوجد —</option>` +
-      STAFF.map(s =>
+      (isTqHall ? `<optgroup label="✅ يصلح تقويمي">` + STAFF.filter(s=>s.is_takmili_preferred).map(s=>
+        `<option value="${s.id}"${m&&m.id===s.id?' selected':''}>✅ ${s.name}${s.dept?' — '+s.dept:''}</option>`).join('')+`</optgroup>`
+        +`<optgroup label="— بقية التدريسيين">`+STAFF.filter(s=>!s.is_takmili_preferred).map(s=>
+        `<option value="${s.id}"${m&&m.id===s.id?' selected':''}>${s.name}${s.notes?' ⚠ ['+s.notes+']':''}${s.dept?' — '+s.dept:''}</option>`).join('')+`</optgroup>`
+      : STAFF.map(s =>
         `<option value="${s.id}"${m && m.id === s.id ? ' selected' : ''}>${s.name}${s.notes ? ' ⚠ ['+s.notes+']' : ''}${s.dept ? ' — ' + s.dept : ''}</option>`
-      ).join('');
+      ).join(''));
 
     const curLabel = m
       ? `<span style="font-weight:400;color:#374151"> — ${escHtml(m.name)}</span>`
@@ -2432,6 +2506,13 @@ function updateXferSlots(i) {
 function closeEditHallModal() {
   document.getElementById('edit-hall-modal').classList.remove('show');
   _editHall = null;
+}
+
+// Add extra monitor slot to a تقويمي hall and open edit modal
+function addExtraMonitorToTq(hname) {
+  if (!lastDist || !lastDist[hname]) return;
+  lastDist[hname].monitors.push(null);
+  openEditHallModal(hname);
 }
 
 // Find where a person already exists (other than excludeHall) — returns array of strings
