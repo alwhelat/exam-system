@@ -1155,6 +1155,7 @@ function runDistribution(){
   lastExcludedNotes=STAFF.filter(s=>s.has_notes&&s.days.includes(day));
   lastLateAssignments=[];
   _modifiedHalls=new Set();
+  _hasIncomplete=false;
   renderResults(lastDist,lastReserve,lastRemaining,day,genderViolations,lastExcludedNotes);
   logActivity('تشغيل التوزيع',`اليوم: ${day} | القاعات: ${sel.length} | الموزَّعون: ${assigned} | الاحتياط: ${lastReserve.length} | انتهاكات الجنس: ${genderViolations}`);
 }
@@ -1329,13 +1330,18 @@ function renderResults(dist,reserve,remaining,day,genderViolations,excludedNotes
       <div style="overflow-x:auto;margin-top:8px">
       <table>
         <thead><tr><th>#</th><th>الاسم</th><th>القسم</th><th>النوع</th>
-          <th style="background:#fef3c7;color:#92400e">مرات المراقبة</th><th>توزيع</th></tr></thead>
+          <th style="background:#fef3c7;color:#92400e">مرات المراقبة</th><th>إجراء</th></tr></thead>
         <tbody>`;
     remaining.forEach((s,i)=>{
+      const esc=escHtml(s.name).replace(/'/g,"\\'");
       html+=`<tr><td>${i+1}</td><td>${escHtml(s.name)}</td><td>${escHtml(s.dept)}</td><td>${s.mtype}</td>
         <td>${histBadge(s.name)}</td>
-        <td><button class="btn" style="font-size:10px;padding:2px 8px;background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;white-space:nowrap"
-          onclick="openAssignLateModal('${escHtml(s.name).replace(/'/g,"\\'")}','غير موزع')">⊕ توزيع</button></td></tr>`;
+        <td style="white-space:nowrap;display:flex;gap:4px">
+          <button class="btn" style="font-size:10px;padding:2px 7px;background:#eff6ff;color:#1d4ed8;border-color:#93c5fd"
+            onclick="openAssignLateModal('${esc}','غير موزع')">⊕ قاعة</button>
+          <button class="btn" style="font-size:10px;padding:2px 7px;background:#fff7ed;color:#b45309;border-color:#fed7aa"
+            onclick="addToReserve('${esc}')">⚡ احتياط</button>
+        </td></tr>`;
     });
     html+=`</tbody></table></div></details>`;
   }
@@ -1527,6 +1533,7 @@ function buildRecordDetail(rec){
 // ─────────────────────────────────────────
 function exportWord(){
   if(!lastDist) return;
+  if(!_confirmIncompleteExport()) return;
   const day=document.getElementById('sel-day').value;
   const rawDate=document.getElementById('sel-date').value;
   const date=rawDate||new Date().toLocaleDateString('ar-IQ');
@@ -1781,6 +1788,17 @@ function doAssignLate() {
   renderResults(lastDist, lastReserve, lastRemaining, day, 0, lastExcludedNotes, _modifiedHalls);
   logActivity('توزيع من ' + fromType, `${name} → قاعة ${hname}`);
   closeAssignLateModal();
+}
+
+function addToReserve(name) {
+  if (!lastDist) return;
+  const person = STAFF.find(s => s.name === name) || {name, title_code:'other', mtype:'', gender:'male', dept:''};
+  lastRemaining = lastRemaining.filter(s => s.name !== name);
+  lastReserve.push(person);
+  const day = document.getElementById('sel-day').value;
+  document.getElementById('s-reserve').textContent = lastReserve.length;
+  document.getElementById('s-remain').textContent  = lastRemaining.length;
+  renderResults(lastDist, lastReserve, lastRemaining, day, 0, lastExcludedNotes, _modifiedHalls);
 }
 
 // ─────────────────────────────────────────
@@ -2305,6 +2323,7 @@ function initAuth() {
 // ─────────────────────────────────────────
 let _editHall = null;
 let _modifiedHalls = new Set();
+let _hasIncomplete = false;
 let lastLateAssignments = [];
 let _assignLateTarget = null;
 
@@ -2415,6 +2434,20 @@ function closeEditHallModal() {
   _editHall = null;
 }
 
+// Find where a person already exists (other than excludeHall) — returns array of strings
+function _findPersonInOtherHalls(personId, excludeHall) {
+  if (!personId || !lastDist) return [];
+  const found = [];
+  for (const [hname, hd] of Object.entries(lastDist)) {
+    if (hname === excludeHall) continue;
+    if (hd.supervisor && hd.supervisor.id === personId) found.push(`${hname} (مشرف)`);
+    hd.monitors.forEach((m, mi) => {
+      if (m && m.id === personId) found.push(`${hname} (مراقب ${mi + 1})`);
+    });
+  }
+  return found;
+}
+
 // Remove a person (by id) from all halls except excludeHall; also from reserve/remaining
 function _removePersonFromOtherHalls(personId, excludeHall) {
   if (!personId || !lastDist) return;
@@ -2437,8 +2470,40 @@ function saveEditHall() {
   _modifiedHalls = new Set();
   const d = lastDist[_editHall];
 
-  // Supervisor: simple select only — remove from other halls if changed
+  // ── Pre-save conflict check (supervisor + regular monitor dropdowns only) ──
+  // Import/transfer sections are already explicit about source removal — skip them
+  const conflicts = []; // [{personName, locations:[]}]
   const supId = document.getElementById('ehm-sup').value;
+  if (supId) {
+    const p = STAFF.find(s => s.id === parseInt(supId));
+    if (p && (!d.supervisor || d.supervisor.id !== p.id)) {
+      const locs = _findPersonInOtherHalls(p.id, _editHall);
+      if (locs.length) conflicts.push({name: p.name, locs});
+    }
+  }
+  d.monitors.forEach((orig, i) => {
+    const impHall = document.getElementById(`ehm-imp-hall-${i}`)?.value;
+    const mid     = document.getElementById(`ehm-mon-${i}`)?.value;
+    // Only check regular dropdown (imports handle their own removal)
+    if (!impHall && mid) {
+      const p = STAFF.find(s => s.id === parseInt(mid));
+      if (p && (!orig || orig.id !== p.id)) {
+        const locs = _findPersonInOtherHalls(p.id, _editHall);
+        if (locs.length) conflicts.push({name: p.name, locs});
+      }
+    }
+  });
+
+  if (conflicts.length) {
+    const lines = conflicts.map(c => `• ${c.name}  ←  ${c.locs.join('، ')}`).join('\n');
+    const ok = confirm(
+      `التدريسيون التاليون موجودون في قاعات أخرى وسيتم إزالتهم منها:\n\n${lines}\n\n` +
+      `ستُؤشَّر تلك القاعات بالتحذير وستحتاج إلى مراجعة التوزيع قبل الإصدار.\n\nهل تريد المتابعة؟`
+    );
+    if (!ok) return;
+  }
+
+  // Supervisor: remove from other halls if changed
   const newSup = supId ? (STAFF.find(s => s.id === parseInt(supId)) || null) : null;
   if (newSup && (!d.supervisor || d.supervisor.id !== newSup.id)) {
     _removePersonFromOtherHalls(newSup.id, _editHall);
@@ -2508,6 +2573,22 @@ function saveEditHall() {
   document.getElementById('s-remain').textContent   = lastRemaining.length;
 
   renderResults(lastDist, lastReserve, lastRemaining, day, 0, lastExcludedNotes, _modifiedHalls);
+
+  // Show incomplete warning if other halls lost staff
+  if (_modifiedHalls.size > 0) {
+    _hasIncomplete = true;
+    const hallsList = [..._modifiedHalls].join('، ');
+    const warning = `<div id="incomplete-warn" style="background:#fef3c7;border:1.5px solid #f59e0b;color:#78350f;padding:10px 14px;border-radius:9px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px">
+      <span style="font-size:18px;line-height:1">⚠</span>
+      <div>
+        <strong>توزيع غير مكتمل</strong> — القاعات التالية فقدت أحد التدريسيين وتحتاج مراجعة:<br>
+        <span style="font-weight:800;font-size:13px">${escHtml(hallsList)}</span><br>
+        <span style="font-size:11px;margin-top:3px;display:block">راجع هذه القاعات (المؤشرة بالإطار الأصفر) وأكمل التوزيع قبل الإصدار</span>
+      </div>
+    </div>`;
+    document.getElementById('results-area').insertAdjacentHTML('afterbegin', warning);
+  }
+
   logActivity('تعديل يدوي', `القاعة: ${_editHall}${_modifiedHalls.size?' | قاعات متأثرة: '+[..._modifiedHalls].join('، '):''}`);
   closeEditHallModal();
 }
@@ -2515,8 +2596,18 @@ function saveEditHall() {
 // ─────────────────────────────────────────
 // PDF EXPORT
 // ─────────────────────────────────────────
+function _confirmIncompleteExport() {
+  if (!_hasIncomplete) return true;
+  const halls = [..._modifiedHalls].join('، ');
+  return confirm(
+    `⚠ تحذير: يوجد قاعات ذات توزيع غير مكتمل:\n${halls || 'بعض القاعات'}\n\n` +
+    `هل تريد إصدار الملف رغم ذلك؟\n(يُنصح بمراجعة القاعات المؤشرة بالإطار الأصفر أولاً)`
+  );
+}
+
 function exportPDF() {
   if (!lastDist) return;
+  if (!_confirmIncompleteExport()) return;
   const day     = document.getElementById('sel-day').value;
   const rawDate = document.getElementById('sel-date').value;
   const date    = rawDate || new Date().toLocaleDateString('ar-IQ');
