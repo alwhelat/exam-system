@@ -780,7 +780,6 @@ async function loadFirebaseData() {
     if (!snap.exists) return;
     ATTENDANCE = snap.data().data || {};
     lsSet(LS_ATTENDANCE, ATTENDANCE);
-    if (Date.now() - _attLastSaveTs < 5000) return; // own write in progress — DOM already updated in-place
     const ap2 = document.getElementById('tab-attendance');
     if (ap2 && ap2.classList.contains('on')) renderAttendanceSheet();
   });
@@ -805,7 +804,6 @@ function fbSaveHistory(hist) {
   db.collection('system').doc('history').set({ data: hist }).catch(e => console.error('fbSaveHistory', e));
 }
 function fbSaveAttendance(att) {
-  _attLastSaveTs = Date.now();
   db.collection('system').doc('attendance').set({ data: att }).catch(e => console.error('fbSaveAttendance', e));
 }
 
@@ -841,7 +839,6 @@ let ATTENDANCE = lsGet(LS_ATTENDANCE, {});
 let STAFF_NOTES = lsGet(LS_STAFF_NOTES, {}); // { [name]: noteText } — manual overrides
 let TAKMILI_HALLS = new Set();
 let _attRecId = null;
-let _attLastSaveTs = 0;
 
 // ─────────────────────────────────────────
 // LOCAL STORAGE HELPERS
@@ -2876,65 +2873,6 @@ function _getAttHall(recId, hallName) {
   return ATTENDANCE[recId][hallName];
 }
 
-function _refreshAttStats() {
-  if (!_attRecId) return;
-  const rec = RECORDS.find(r => r.id === _attRecId); if (!rec) return;
-  const att = ATTENDANCE[_attRecId] || {};
-  let p = 0, a = 0, n = 0;
-  for (const h of rec.halls) {
-    const ah = att[h.hall] || {};
-    if (h.supervisor) { const s = ah.sup||null; if(s==='present')p++; else if(s==='absent')a++; else n++; }
-    h.monitors.forEach((m,i) => { if(m){ const s=(ah.monitors||[])[i]||null; if(s==='present')p++; else if(s==='absent')a++; else n++; } });
-  }
-  if (rec.reserve) rec.reserve.forEach((name,i) => {
-    const s = ((att['__احتياط__']||{}).monitors||[])[i]||null;
-    if(s==='present')p++; else if(s==='absent')a++; else n++;
-  });
-  const ep = document.getElementById('att-cnt-p'); if(ep) ep.textContent = p;
-  const ea = document.getElementById('att-cnt-a'); if(ea) ea.textContent = a;
-  const en = document.getElementById('att-cnt-n'); if(en) en.textContent = n;
-}
-
-function _refreshHallTally(hallName) {
-  const anyBtn = [...document.querySelectorAll('[data-att-action]')].find(b => b.getAttribute('data-att-hall') === hallName);
-  if (!anyBtn) return;
-  const hallDiv = anyBtn.closest('.att-hall');
-  if (!hallDiv) return;
-  const tally = hallDiv.querySelector('.att-hall-tally');
-  if (!tally) return;
-  const ah = (ATTENDANCE[_attRecId]||{})[hallName]||{};
-  let p = 0, a = 0;
-  if (hallName === '__احتياط__') {
-    hallDiv.querySelectorAll('[data-att-action="present"]').forEach(b => {
-      const i = parseInt(b.getAttribute('data-att-idx'), 10);
-      const s = (ah.monitors||[])[i]||null;
-      if(s==='present') p++; else if(s==='absent') a++;
-    });
-  } else {
-    const rec = RECORDS.find(r => r.id === _attRecId); if(!rec) return;
-    const h = rec.halls.find(hh => hh.hall === hallName); if(!h) return;
-    if (h.supervisor) { const s = ah.sup||null; if(s==='present')p++; else if(s==='absent')a++; }
-    h.monitors.forEach((m,i) => { if(m){ const s=(ah.monitors||[])[i]||null; if(s==='present')p++; else if(s==='absent')a++; } });
-  }
-  const spans = tally.querySelectorAll(':scope > span');
-  if(spans[0]) spans[0].textContent = `✔ ${p}`;
-  if(spans[1]) spans[1].textContent = `✗ ${a}`;
-}
-
-function _refreshOneAtt(hallName, type, idx) {
-  if (!_attRecId) return;
-  const ah = (ATTENDANCE[_attRecId]||{})[hallName]||{};
-  const newStatus = type === 'sup' ? (ah.sup||null) : ((ah.monitors||[])[idx]||null);
-  for (const b of document.querySelectorAll('[data-att-action]')) {
-    if (b.getAttribute('data-att-hall') !== hallName) continue;
-    if (b.getAttribute('data-att-type') !== type) continue;
-    if (parseInt(b.getAttribute('data-att-idx'),10) !== idx) continue;
-    const ac = b.getAttribute('data-att-action');
-    b.classList.toggle('on', ac === 'present' ? newStatus === 'present' : newStatus === 'absent');
-  }
-  _refreshHallTally(hallName);
-}
-
 function toggleAtt(recId, hallName, type, idx, status) {
   const h = _getAttHall(recId, hallName);
   if (type === 'sup') {
@@ -2951,12 +2889,13 @@ function toggleAtt(recId, hallName, type, idx, status) {
 function markAllPresent() {
   if (!_attRecId) return;
   const rec = RECORDS.find(r => r.id === _attRecId); if (!rec) return;
+  const _isAttRole = (() => { const s = getSession(); return s && s.role === 'attendance'; })();
   for (const h of rec.halls) {
     const ah = _getAttHall(_attRecId, h.hall);
     if (h.supervisor) ah.sup = 'present';
     h.monitors.forEach((m, i) => { if (m) { while (ah.monitors.length <= i) ah.monitors.push(null); ah.monitors[i] = 'present'; } });
   }
-  if (rec.reserve && rec.reserve.length) {
+  if (rec.reserve && rec.reserve.length && !_isAttRole) {
     const ah = _getAttHall(_attRecId, '__احتياط__');
     rec.reserve.forEach((name, i) => { while (ah.monitors.length <= i) ah.monitors.push(null); ah.monitors[i] = 'present'; });
   }
@@ -2973,6 +2912,7 @@ function renderAttendanceSheet() {
   const rec = RECORDS.find(r => r.id === _attRecId);
   if (!rec) { sheet.innerHTML = ''; if (statsWrap) statsWrap.style.display = 'none'; return; }
 
+  const _isAttRole = (() => { const s = getSession(); return s && s.role === 'attendance'; })();
   let presentCount = 0, absentCount = 0, pendingCount = 0;
 
   function getStatus(hallName, type, idx) {
@@ -2993,8 +2933,8 @@ function renderAttendanceSheet() {
       }
     });
   }
-  // Reserve stats
-  if (rec.reserve) {
+  // Reserve stats (not shown for attendance supervisor role)
+  if (rec.reserve && !_isAttRole) {
     rec.reserve.forEach((name, i) => {
       const s = getStatus('__احتياط__', 'mon', i);
       if (s === 'present') presentCount++; else if (s === 'absent') absentCount++; else pendingCount++;
@@ -3058,8 +2998,8 @@ function renderAttendanceSheet() {
     html += `</div></div>`;
   }
 
-  // Reserve attendance section
-  if (rec.reserve && rec.reserve.length) {
+  // Reserve attendance section (hidden for attendance supervisor role)
+  if (rec.reserve && rec.reserve.length && !_isAttRole) {
     let resPT = 0, resAT = 0;
     rec.reserve.forEach((name, i) => {
       const s = getStatus('__احتياط__', 'mon', i);
