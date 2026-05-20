@@ -202,6 +202,7 @@ tr:hover td{background:#eef2ff}
 /* admin panel */
 .role-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700}
 .role-admin{background:#dbeafe;color:#1e3a8a}
+.role-distributor{background:#f3e8ff;color:#6b21a8}
 .role-user{background:#dcfce7;color:#14532d}
 .status-active{color:#16a34a;font-weight:700;font-size:12px}
 .status-inactive{color:#dc2626;font-weight:700;font-size:12px}
@@ -221,6 +222,24 @@ tr:hover td{background:#eef2ff}
 .hall-block.hall-mod .hall-hdr{background:#fef3c7!important}
 .tq-label{display:inline-block;background:#dc2626;color:#fff;font-size:9px;font-weight:800;padding:1px 7px;border-radius:20px;margin-right:5px;vertical-align:middle}
 .tq-his{background:#fee2e2!important}
+/* ── HR ── */
+.role-hr{background:#fef9c3;color:#713f12}
+.hr-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.hr-sb{background:#fff;border-radius:8px;padding:9px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.hr-sn{font-size:20px;font-weight:800;color:#0d1b6e}.hr-sl{font-size:10px;color:#888;margin-top:2px}
+.hr-sb.exc .hr-sn{color:#991b1b}.hr-sb.warn .hr-sn{color:#b45309}
+.hr-badge-ok{display:inline-block;background:#dcfce7;color:#14532d;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.hr-badge-warn{display:inline-block;background:#fef9c3;color:#713f12;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.hr-badge-exc{display:inline-block;background:#fee2e2;color:#991b1b;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.hr-flag{background:none;border:none;cursor:pointer;font-size:16px;padding:2px 6px;border-radius:5px;transition:background .12s;line-height:1}
+.hr-flag:hover{background:#fee2e2}.hr-flag.on{color:#dc2626}.hr-flag:not(.on){color:#d1d5db}
+.hr-note-inp{width:100%;padding:3px 7px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;font-family:inherit;direction:rtl}
+.hr-note-inp:focus{outline:none;border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.12)}
+.hr-thresh-box{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;margin-bottom:12px;flex-wrap:wrap}
+.hr-thresh-lbl{font-size:13px;font-weight:700;color:#92400e}
+.hr-thresh-inp{width:70px;padding:7px 10px;font-size:14px;border:2px solid #fed7aa;border-radius:7px;text-align:center;font-weight:800;color:#92400e;font-family:inherit}
+.hr-thresh-inp:focus{outline:none;border-color:#f59e0b}
+@media(max-width:800px){.hr-stats{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
@@ -340,6 +359,7 @@ tr:hover td{background:#eef2ff}
   </div>
   <div class="tab" id="tab-btn-admin" style="display:none" onclick="showTab(this,'admin')">👑 الإدارة</div>
   <div class="tab" id="tab-btn-attendance" style="display:none" onclick="showTab(this,'attendance')">📋 الحضور</div>
+  <div class="tab" id="tab-btn-hr" style="display:none" onclick="showTab(this,'hr')">📊 الموارد البشرية</div>
 </div>
 
 <!-- ══════════════════ DISTRIBUTION PANEL ══════════════════ -->
@@ -508,7 +528,7 @@ tr:hover td{background:#eef2ff}
   <div class="admin-section">
     <div class="ct">
       <span>👥 إدارة المستخدمين</span>
-      <button class="btn bp" style="font-size:11px;padding:4px 12px" onclick="openAddUserModal()">+ إضافة مستخدم</button>
+      <button class="btn bp" style="font-size:11px;padding:4px 12px" onclick="openAddUserModal()" id="btn-add-user">+ إضافة مستخدم</button>
     </div>
     <div style="overflow-x:auto">
       <table>
@@ -573,6 +593,86 @@ tr:hover td{background:#eef2ff}
   <div id="att-sheet"></div>
 </div>
 
+<!-- ══════════════════ HR PANEL ══════════════════ -->
+<div class="panel wrap" id="tab-hr">
+  <div class="card">
+    <div class="ct">
+      <span>📊 إعدادات الموارد البشرية</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn bp" style="font-size:12px;padding:5px 14px" onclick="exportHRExcel()">📥 تصدير Excel</button>
+        <button class="btn" style="font-size:12px;padding:5px 14px;background:#6b21a8;color:#fff;border-color:#6b21a8" onclick="renderHRTab()">🔄 تحديث</button>
+      </div>
+    </div>
+    <div class="hr-thresh-box">
+      <span class="hr-thresh-lbl">🔢 رصيد الغياب المسموح به (الحد الأقصى):</span>
+      <input class="hr-thresh-inp" type="number" id="hr-threshold" value="3" min="1" max="99"
+             oninput="saveHRThreshold()" placeholder="3">
+      <span style="font-size:12px;color:#92400e">مرات غياب</span>
+      <span style="font-size:11px;color:#b45309;margin-right:8px">
+        🟡 تحذير عند: <strong id="hr-warn-level">2</strong> &nbsp;|&nbsp;
+        🔴 تجاوز عند: أكثر من <strong id="hr-exc-level">3</strong>
+      </span>
+    </div>
+    <!-- Filters -->
+    <div class="fbar" style="margin-bottom:10px">
+      <input type="text" id="hr-search" placeholder="🔍 بحث بالاسم أو القسم..." oninput="applyHRFilters()" style="min-width:190px">
+      <select id="hr-filt-status" onchange="applyHRFilters()">
+        <option value="">كل الحالات</option>
+        <option value="ok">✅ ضمن الحد</option>
+        <option value="warn">⚠ تحذير</option>
+        <option value="exc">❌ تجاوز الحد</option>
+        <option value="flagged">🚩 مؤشَّرون</option>
+      </select>
+      <select id="hr-filt-dept" onchange="applyHRFilters()">
+        <option value="">كل الأقسام</option>
+      </select>
+      <select id="hr-filt-type" onchange="applyHRFilters()">
+        <option value="">كل الأنواع</option>
+        <option value="ملاك">ملاك</option>
+        <option value="محاضر">محاضر</option>
+      </select>
+    </div>
+  </div>
+  <!-- Summary Stats -->
+  <div class="hr-stats" id="hr-stats-row" style="display:none">
+    <div class="hr-sb"><div class="hr-sn" id="hr-s-total">0</div><div class="hr-sl">إجمالي المعنيين</div></div>
+    <div class="hr-sb"><div class="hr-sn" id="hr-s-assigned">0</div><div class="hr-sl">إجمالي التكليفات</div></div>
+    <div class="hr-sb"><div class="hr-sn" id="hr-s-absences">0</div><div class="hr-sl">إجمالي الغيابات</div></div>
+    <div class="hr-sb warn"><div class="hr-sn" id="hr-s-warn">0</div><div class="hr-sl">⚠ في مرحلة التحذير</div></div>
+    <div class="hr-sb exc"><div class="hr-sn" id="hr-s-exc">0</div><div class="hr-sl">❌ تجاوزوا الحد</div></div>
+  </div>
+  <!-- Table -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto">
+      <table id="hr-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>🚩</th>
+            <th>الاسم</th>
+            <th>القسم</th>
+            <th>النوع</th>
+            <th>المكلَّف</th>
+            <th>حضر</th>
+            <th>غاب</th>
+            <th>لم يُسجَّل</th>
+            <th>الحضور%</th>
+            <th>الرصيد المتبقي</th>
+            <th>الحالة</th>
+            <th>ملاحظات HR</th>
+          </tr>
+        </thead>
+        <tbody id="hr-tbody"></tbody>
+      </table>
+    </div>
+    <div id="hr-empty" style="display:none;text-align:center;padding:40px 20px;color:#94a3b8">
+      <div style="font-size:38px;margin-bottom:10px">📋</div>
+      <p style="font-size:13px">لا توجد سجلات حضور محفوظة بعد</p>
+      <p style="font-size:11px;margin-top:5px">يجب أن تكون هناك سجلات توزيع مع بيانات حضور لعرض التقرير</p>
+    </div>
+  </div>
+</div>
+
 <!-- ══ ADD USER MODAL ══ -->
 <div class="auth-modal-ov" id="add-user-modal">
   <div class="auth-modal">
@@ -585,6 +685,8 @@ tr:hover td{background:#eef2ff}
     <select class="auth-field" id="au-role" style="padding:9px 12px;font-size:13px;border:1.5px solid #c8cfe8;border-radius:7px;font-family:inherit;margin-bottom:12px">
       <option value="user">مستخدم عادي</option>
       <option value="attendance">مشرف حضور (يأخذ الحضور فقط)</option>
+      <option value="distributor">مشرف التوزيع (صلاحيات كاملة عدا إدارة المستخدمين)</option>
+      <option value="hr">موارد بشرية HR (تقارير الغياب فقط)</option>
       <option value="admin">مسؤول (admin)</option>
     </select>
     <div class="auth-msg" id="au-msg"></div>
@@ -697,13 +799,14 @@ let FB_ACTIVITY        = [];
 
 async function loadFirebaseData() {
   // ── Load all docs in parallel ──
-  const [uSnap, pSnap, aSnap, rSnap, hSnap, attSnap] = await Promise.all([
+  const [uSnap, pSnap, aSnap, rSnap, hSnap, attSnap, hrSnap] = await Promise.all([
     db.collection('system').doc('users').get(),
     db.collection('system').doc('platform').get(),
     db.collection('system').doc('activity').get(),
     db.collection('system').doc('records').get(),
     db.collection('system').doc('history').get(),
     db.collection('system').doc('attendance').get(),
+    db.collection('system').doc('hr_settings').get(),
   ]);
 
   // ── Users ──
@@ -738,6 +841,14 @@ async function loadFirebaseData() {
     lsSet(LS_ATTENDANCE, ATTENDANCE);
   }
 
+  // ── HR Settings ──
+  if (hrSnap.exists) {
+    HR_SETTINGS = hrSnap.data() || {};
+    lsSet(LS_HR, HR_SETTINGS);
+  } else {
+    HR_SETTINGS = lsGet(LS_HR, { threshold: 3, notes: {}, flags: {} });
+  }
+
   // ── Real-time listeners ──
   db.collection('system').doc('users').onSnapshot(snap => {
     if (snap.exists) FB_USERS = snap.data().list || [];
@@ -749,7 +860,7 @@ async function loadFirebaseData() {
     FB_PLATFORM_LOCKED = snap.exists ? (snap.data().locked || false) : false;
     if (FB_PLATFORM_LOCKED) {
       const sess = getSession();
-      if (sess && sess.role !== 'admin') {
+      if (sess && sess.role !== 'admin' && sess.role !== 'distributor') {
         sessionStorage.removeItem(SS_SESSION);
         showLoginOverlay(true);
       }
@@ -773,6 +884,8 @@ async function loadFirebaseData() {
     if (rp && rp.classList.contains('on')) renderRecordsTab();
     const ap2 = document.getElementById('tab-attendance');
     if (ap2 && ap2.classList.contains('on')) renderAttendanceTab();
+    const hrp = document.getElementById('tab-hr');
+    if (hrp && hrp.classList.contains('on')) renderHRTab();
   });
 
   // ── Attendance: real-time sync across devices ──
@@ -782,6 +895,15 @@ async function loadFirebaseData() {
     lsSet(LS_ATTENDANCE, ATTENDANCE);
     const ap2 = document.getElementById('tab-attendance');
     if (ap2 && ap2.classList.contains('on')) renderAttendanceSheet();
+    const hrp = document.getElementById('tab-hr');
+    if (hrp && hrp.classList.contains('on')) renderHRTab();
+  });
+
+  // ── HR Settings: real-time sync ──
+  db.collection('system').doc('hr_settings').onSnapshot(snap => {
+    if (snap.exists) { HR_SETTINGS = snap.data() || {}; lsSet(LS_HR, HR_SETTINGS); }
+    const hrp = document.getElementById('tab-hr');
+    if (hrp && hrp.classList.contains('on')) renderHRTab();
   });
 }
 
@@ -806,6 +928,10 @@ function fbSaveHistory(hist) {
 function fbSaveAttendance(att) {
   db.collection('system').doc('attendance').set({ data: att }).catch(e => console.error('fbSaveAttendance', e));
 }
+function fbSaveHRSettings() {
+  lsSet(LS_HR, HR_SETTINGS);
+  db.collection('system').doc('hr_settings').set(HR_SETTINGS).catch(e => console.error('fbSaveHR', e));
+}
 
 // ─────────────────────────────────────────
 // CONSTANTS
@@ -826,6 +952,7 @@ const LS_RECORDS    = 'fuc_exam_records_v1';
 const LS_HISTORY    = 'fuc_monitor_history_v1';
 const LS_ATTENDANCE = 'fuc_attendance_v1';
 const LS_STAFF_NOTES = 'fuc_staff_notes_v1';
+const LS_HR         = 'fuc_hr_settings_v1';
 
 // ─────────────────────────────────────────
 // STATE
@@ -836,9 +963,11 @@ let staffWb=null, hallsWb=null;
 let RECORDS    = lsGet(LS_RECORDS, []);
 let HISTORY    = lsGet(LS_HISTORY, {});
 let ATTENDANCE = lsGet(LS_ATTENDANCE, {});
-let STAFF_NOTES = lsGet(LS_STAFF_NOTES, {}); // { [name]: noteText } — manual overrides
+let STAFF_NOTES = lsGet(LS_STAFF_NOTES, {});
+let HR_SETTINGS = lsGet(LS_HR, { threshold: 3, notes: {}, flags: {} });
 let TAKMILI_HALLS = new Set();
 let _attRecId = null;
+let _hrReport = [];  // cached report data for filter/export
 
 // ─────────────────────────────────────────
 // LOCAL STORAGE HELPERS
@@ -1997,6 +2126,7 @@ function showTab(el,id){
   if(id==='staff')      renderStaffTable();
   if(id==='admin')      renderAdminTab();
   if(id==='attendance') renderAttendanceTab();
+  if(id==='hr')         renderHRTab();
 }
 
 // ═════════════════════════════════════════
@@ -2015,7 +2145,7 @@ if (_bc) {
     const msg = e.data;
     if (msg.type === 'platform_locked') {
       const sess = getSession();
-      if (sess && sess.role !== 'admin') {
+      if (sess && sess.role !== 'admin' && sess.role !== 'distributor') {
         sessionStorage.removeItem(SS_SESSION);
         showLoginOverlay(true);
       }
@@ -2082,14 +2212,14 @@ function doLogin() {
     return;
   }
   if (!user.active) { err.textContent='🔒 هذا الحساب معطَّل — تواصل مع المسؤول'; return; }
-  if (isPlatformLocked() && user.role !== 'admin') {
+  if (isPlatformLocked() && user.role !== 'admin' && user.role !== 'distributor') {
     err.textContent = '🔒 المنصة مقفلة من قِبَل المسؤول — تواصل معه لفتحها'; return;
   }
 
   const sess = { username:user.username, role:user.role, id:user.id, ts:Date.now() };
   sessionStorage.setItem(SS_SESSION, JSON.stringify(sess));
   document.getElementById('login-ov').style.display = 'none';
-  const roleIcon = user.role==='admin'?'👑 ':user.role==='attendance'?'📋 ':'👤 ';
+  const roleIcon = user.role==='admin'?'👑 ':user.role==='distributor'?'🛡 ':user.role==='hr'?'📊 ':user.role==='attendance'?'📋 ':'👤 ';
   document.getElementById('hdr-user').textContent = roleIcon + user.username;
   err.textContent = '';
   applyRoleUI(user.role);
@@ -2106,7 +2236,7 @@ function doLock() {
 
 // ── ADMIN: LOCK / UNLOCK PLATFORM ──
 function adminLockPlatform(lock) {
-  const sess = getSession(); if(!sess || sess.role!=='admin') return;
+  const sess = getSession(); if(!sess || (sess.role!=='admin' && sess.role!=='distributor')) return;
   if (lock) {
     if (!confirm('هل تريد قفل المنصة لجميع المستخدمين العاديين؟')) return;
     fbSavePlatformLocked(true);
@@ -2152,8 +2282,14 @@ function showLoginOverlay(showBanner = false) {
 function applyRoleUI(role) {
   const adminTab = document.getElementById('tab-btn-admin');
   const attTab   = document.getElementById('tab-btn-attendance');
-  if (adminTab) adminTab.style.display = (role==='admin') ? '' : 'none';
-  if (attTab)   attTab.style.display   = (role==='admin' || role==='attendance') ? '' : 'none';
+  const hrTab    = document.getElementById('tab-btn-hr');
+  if (adminTab) adminTab.style.display = (role==='admin' || role==='distributor') ? '' : 'none';
+  if (attTab)   attTab.style.display   = (role==='admin' || role==='attendance' || role==='distributor') ? '' : 'none';
+  if (hrTab)    hrTab.style.display    = (role==='admin' || role==='hr') ? '' : 'none';
+
+  // Hide "إضافة مستخدم" button for non-admin
+  const addUserBtn = document.getElementById('btn-add-user');
+  if (addUserBtn) addUserBtn.style.display = (role==='admin') ? '' : 'none';
 
   if (role === 'attendance') {
     // Hide all other tabs, show only attendance tab
@@ -2167,6 +2303,20 @@ function applyRoleUI(role) {
     const ap = document.getElementById('tab-attendance');
     if (ap) ap.classList.add('on');
     renderAttendanceTab();
+  }
+
+  if (role === 'hr') {
+    // Hide all tabs, show only HR tab
+    document.querySelectorAll('.tab').forEach(t => { t.style.display = 'none'; });
+    if (hrTab) { hrTab.style.display = ''; hrTab.classList.add('on'); }
+    // Hide the file-load panel
+    const lp = document.querySelector('.load-panel');
+    if (lp) lp.style.display = 'none';
+    // Switch to HR panel
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+    const hp = document.getElementById('tab-hr');
+    if (hp) hp.classList.add('on');
+    renderHRTab();
   }
 }
 
@@ -2207,7 +2357,7 @@ function doChangePw() {
     user.username = newUsername;
     const ns = {...sess, username:newUsername};
     sessionStorage.setItem(SS_SESSION, JSON.stringify(ns));
-    document.getElementById('hdr-user').textContent = (sess.role==='admin'?'👑 ':'👤 ') + newUsername;
+    document.getElementById('hdr-user').textContent = (sess.role==='admin'?'👑 ':sess.role==='distributor'?'🛡 ':sess.role==='hr'?'📊 ':'👤 ') + newUsername;
   }
   user.pw_hash = hashPw(newPw);
   saveUsers(users);
@@ -2218,6 +2368,7 @@ function doChangePw() {
 
 // ── ADMIN: ADD USER ──
 function openAddUserModal() {
+  const sess = getSession(); if(!sess || sess.role!=='admin') return;
   document.getElementById('au-username').value=''; document.getElementById('au-pass').value='';
   document.getElementById('au-role').value='user'; document.getElementById('au-msg').textContent='';
   document.getElementById('au-msg').className='auth-msg';
@@ -2236,7 +2387,7 @@ function doAddUser() {
   const nu = { id:Date.now(), username, pw_hash:hashPw(pass), role, active:true, createdAt:new Date().toISOString() };
   users.push(nu);
   saveUsers(users);
-  const roleName = role==='admin'?'مسؤول':role==='attendance'?'مشرف حضور':'مستخدم';
+  const roleName = role==='admin'?'مسؤول':role==='distributor'?'مشرف التوزيع':role==='hr'?'موارد بشرية':role==='attendance'?'مشرف حضور':'مستخدم';
   logActivity('إضافة مستخدم',`"${username}" — الدور: ${roleName}`);
   msg.textContent=`✔ تمت إضافة "${username}" بنجاح`; msg.className='auth-msg ok';
   renderUsersTable();
@@ -2271,6 +2422,7 @@ function deleteUser(id) {
 
 // ── ADMIN: RESET OTHER USER PASSWORD ──
 function openResetPwModal(id) {
+  const sess = getSession(); if(!sess || sess.role!=='admin') return;
   const users = getUsers();
   const user  = users.find(u => u.id===id); if(!user) return;
   document.getElementById('rp-uid').value   = id;
@@ -2307,8 +2459,8 @@ function renderUsersTable() {
   const tbody = document.getElementById('users-tbody'); if(!tbody) return;
   tbody.innerHTML = users.map((u,i) => {
     const isMe    = sess && u.id === sess.id;
-    const roleLbl = u.role==='admin' ? 'مسؤول' : u.role==='attendance' ? 'مشرف حضور' : 'مستخدم';
-    const roleCls = u.role==='admin' ? 'role-admin' : u.role==='attendance' ? 'role-badge' : 'role-user';
+    const roleLbl = u.role==='admin' ? 'مسؤول' : u.role==='distributor' ? 'مشرف التوزيع' : u.role==='hr' ? 'موارد بشرية' : u.role==='attendance' ? 'مشرف حضور' : 'مستخدم';
+    const roleCls = u.role==='admin' ? 'role-admin' : u.role==='distributor' ? 'role-distributor' : u.role==='hr' ? 'role-hr' : u.role==='attendance' ? 'role-badge' : 'role-user';
     const stLbl   = u.active ? '✔ نشط' : '✗ معطَّل';
     const stCls   = u.active ? 'status-active' : 'status-inactive';
     const created = new Date(u.createdAt).toLocaleDateString('ar-IQ');
@@ -2319,7 +2471,7 @@ function renderUsersTable() {
       <td><span class="${stCls}">${stLbl}</span></td>
       <td style="font-size:11px;color:#888">${created}</td>
       <td>
-        ${!isMe?`<div style="display:flex;gap:5px;flex-wrap:wrap">
+        ${(!isMe && sess && sess.role==='admin')?`<div style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="btn" style="font-size:10px;padding:2px 8px" onclick="toggleUserActive(${u.id})">${u.active?'🔒 تعطيل':'🔓 تفعيل'}</button>
           <button class="btn" style="font-size:10px;padding:2px 8px" onclick="openResetPwModal(${u.id})">🔑 إعادة كلمة المرور</button>
           <button class="btn br" style="font-size:10px;padding:2px 8px" onclick="deleteUser(${u.id})">🗑 حذف</button>
@@ -2339,6 +2491,10 @@ function renderActivityLog() {
     const dt = new Date(a.ts).toLocaleString('ar-IQ',{dateStyle:'short',timeStyle:'short'});
     const rb = a.role==='admin'
       ? `<span class="role-badge role-admin">مسؤول</span>`
+      : a.role==='distributor'
+      ? `<span class="role-badge role-distributor">مشرف التوزيع</span>`
+      : a.role==='hr'
+      ? `<span class="role-badge role-hr">موارد بشرية</span>`
       : a.role==='attendance'
       ? `<span class="role-badge" style="background:#fef3c7;color:#92400e">مشرف حضور</span>`
       : `<span class="role-badge role-user">مستخدم</span>`;
@@ -2372,12 +2528,12 @@ function initAuth() {
   if (!user || !user.active) {
     sessionStorage.removeItem(SS_SESSION); showLoginOverlay(false); return;
   }
-  if (platLocked && sess.role !== 'admin') {
+  if (platLocked && sess.role !== 'admin' && sess.role !== 'distributor') {
     sessionStorage.removeItem(SS_SESSION); showLoginOverlay(true); return;
   }
 
   document.getElementById('login-ov').style.display = 'none';
-  const ri2 = sess.role==='admin'?'👑 ':sess.role==='attendance'?'📋 ':'👤 ';
+  const ri2 = sess.role==='admin'?'👑 ':sess.role==='distributor'?'🛡 ':sess.role==='hr'?'📊 ':sess.role==='attendance'?'📋 ':'👤 ';
   document.getElementById('hdr-user').textContent = ri2 + sess.username;
   applyRoleUI(sess.role);
 }
@@ -3146,6 +3302,248 @@ h2{font-size:13pt;margin:12pt 0 5pt;padding-right:6pt;border-right:4pt solid}
   w.focus();
   setTimeout(() => { try { w.print(); } catch(e) {} }, 700);
   logActivity('تصدير كشف حضور', `اليوم: ${day} | حاضر: ${present.length} | غائب: ${absent.length}`);
+}
+
+// ═════════════════════════════════════════
+// HR — ABSENCE REPORT SYSTEM
+// ═════════════════════════════════════════
+
+function buildAbsenceReport() {
+  // Build per-person absence data from all records + attendance
+  const map = {};  // name -> { name, dept, mtype, total, present, absent, pending }
+
+  function ensure(name, dept, mtype) {
+    if (!map[name]) map[name] = { name, dept: dept||'—', mtype: mtype||'—', total:0, present:0, absent:0, pending:0 };
+    // update dept/mtype if previously unknown
+    if (dept && map[name].dept === '—') map[name].dept = dept;
+    if (mtype && map[name].mtype === '—') map[name].mtype = mtype;
+  }
+
+  // Merge STAFF lookup for dept/mtype
+  const staffLookup = {};
+  STAFF.forEach(s => { staffLookup[s.name] = s; });
+
+  for (const rec of RECORDS) {
+    const att = ATTENDANCE[rec.id] || {};
+    for (const h of (rec.halls || [])) {
+      // Supervisor
+      if (h.supervisor) {
+        const s = staffLookup[h.supervisor];
+        ensure(h.supervisor, h.supervisorDept || (s&&s.dept)||'—', s&&s.mtype||'—');
+        const p = map[h.supervisor];
+        p.total++;
+        const st = ((att[h.hall]||{}).sup) || null;
+        if (st === 'present') p.present++;
+        else if (st === 'absent') p.absent++;
+        else p.pending++;
+      }
+      // Monitors
+      (h.monitors || []).forEach((mname, i) => {
+        if (!mname) return;
+        const s = staffLookup[mname];
+        const dept = (h.monitorDepts&&h.monitorDepts[i]) || (s&&s.dept)||'—';
+        ensure(mname, dept, s&&s.mtype||'—');
+        const p = map[mname];
+        p.total++;
+        const mons = ((att[h.hall]||{}).monitors)||[];
+        const st = mons[i] || null;
+        if (st === 'present') p.present++;
+        else if (st === 'absent') p.absent++;
+        else p.pending++;
+      });
+    }
+    // Reserve
+    if (rec.reserve) {
+      rec.reserve.forEach((rname, i) => {
+        if (!rname) return;
+        const s = staffLookup[rname];
+        ensure(rname, s&&s.dept||'—', s&&s.mtype||'—');
+        const p = map[rname];
+        p.total++;
+        const mons = ((att['__احتياط__']||{}).monitors)||[];
+        const st = mons[i] || null;
+        if (st === 'present') p.present++;
+        else if (st === 'absent') p.absent++;
+        else p.pending++;
+      });
+    }
+  }
+
+  const threshold = parseInt(document.getElementById('hr-threshold')?.value)||HR_SETTINGS.threshold||3;
+  const warnAt = threshold - 1;
+
+  return Object.values(map).map(p => {
+    const rate = p.total > 0 ? Math.round((p.present / p.total) * 100) : 0;
+    const balance = threshold - p.absent;
+    let status = 'ok';
+    if (p.absent > threshold) status = 'exc';
+    else if (p.absent >= warnAt && warnAt > 0) status = 'warn';
+    return {
+      ...p,
+      rate,
+      balance,
+      status,
+      note: (HR_SETTINGS.notes||{})[p.name] || '',
+      flagged: !!(HR_SETTINGS.flags||{})[p.name]
+    };
+  }).sort((a,b) => b.absent - a.absent || a.name.localeCompare(b.name, 'ar'));
+}
+
+function saveHRThreshold() {
+  const v = parseInt(document.getElementById('hr-threshold').value) || 3;
+  HR_SETTINGS.threshold = v;
+  fbSaveHRSettings();
+  const warn = Math.max(1, v - 1);
+  const excEl = document.getElementById('hr-exc-level');
+  const warnEl = document.getElementById('hr-warn-level');
+  if (excEl) excEl.textContent = v;
+  if (warnEl) warnEl.textContent = warn;
+  applyHRFilters();
+}
+
+function saveHRNote(name, val) {
+  if (!HR_SETTINGS.notes) HR_SETTINGS.notes = {};
+  HR_SETTINGS.notes[name] = val;
+  fbSaveHRSettings();
+}
+
+function toggleHRFlag(name) {
+  if (!HR_SETTINGS.flags) HR_SETTINGS.flags = {};
+  HR_SETTINGS.flags[name] = !HR_SETTINGS.flags[name];
+  fbSaveHRSettings();
+  // Update just the flag button without full re-render
+  const btn = document.querySelector(`.hr-flag[data-name="${CSS.escape(name)}"]`);
+  if (btn) {
+    btn.classList.toggle('on', !!HR_SETTINGS.flags[name]);
+    btn.title = HR_SETTINGS.flags[name] ? 'إلغاء التأشير' : 'تأشير للمتابعة';
+    // update cached report
+    const row = _hrReport.find(r => r.name === name);
+    if (row) row.flagged = !!HR_SETTINGS.flags[name];
+  }
+}
+
+function renderHRTab() {
+  // Sync threshold from settings
+  const threshEl = document.getElementById('hr-threshold');
+  if (threshEl && HR_SETTINGS.threshold) threshEl.value = HR_SETTINGS.threshold;
+  const threshold = parseInt(threshEl?.value) || 3;
+  const warn = Math.max(1, threshold - 1);
+  const excEl = document.getElementById('hr-exc-level');
+  const warnEl = document.getElementById('hr-warn-level');
+  if (excEl) excEl.textContent = threshold;
+  if (warnEl) warnEl.textContent = warn;
+
+  _hrReport = buildAbsenceReport();
+
+  // Populate dept filter
+  const deptSel = document.getElementById('hr-filt-dept');
+  if (deptSel) {
+    const depts = [...new Set(_hrReport.map(r => r.dept).filter(d => d&&d!=='—'))].sort();
+    const cur = deptSel.value;
+    deptSel.innerHTML = '<option value="">كل الأقسام</option>' +
+      depts.map(d => `<option value="${escHtml(d)}"${cur===d?' selected':''}>${escHtml(d)}</option>`).join('');
+  }
+
+  applyHRFilters();
+}
+
+function applyHRFilters() {
+  if (!_hrReport.length && !RECORDS.length) {
+    document.getElementById('hr-stats-row').style.display = 'none';
+    document.getElementById('hr-tbody').innerHTML = '';
+    document.getElementById('hr-empty').style.display = '';
+    return;
+  }
+  const q     = (document.getElementById('hr-search')?.value||'').trim().toLowerCase();
+  const fStat = document.getElementById('hr-filt-status')?.value||'';
+  const fDept = document.getElementById('hr-filt-dept')?.value||'';
+  const fType = document.getElementById('hr-filt-type')?.value||'';
+  const threshold = parseInt(document.getElementById('hr-threshold')?.value)||HR_SETTINGS.threshold||3;
+
+  let rows = _hrReport;
+  if (q) rows = rows.filter(r => r.name.toLowerCase().includes(q) || r.dept.toLowerCase().includes(q));
+  if (fDept) rows = rows.filter(r => r.dept === fDept);
+  if (fType) rows = rows.filter(r => r.mtype === fType);
+  if (fStat === 'ok')      rows = rows.filter(r => r.status==='ok');
+  else if (fStat === 'warn') rows = rows.filter(r => r.status==='warn');
+  else if (fStat === 'exc')  rows = rows.filter(r => r.status==='exc');
+  else if (fStat === 'flagged') rows = rows.filter(r => r.flagged);
+
+  // Stats (on full report, not filtered)
+  const all = _hrReport;
+  const totAbs = all.reduce((s,r) => s + r.absent, 0);
+  const totAss = all.reduce((s,r) => s + r.total, 0);
+  const warnCount = all.filter(r => r.status==='warn').length;
+  const excCount  = all.filter(r => r.status==='exc').length;
+  document.getElementById('hr-s-total').textContent   = all.length;
+  document.getElementById('hr-s-assigned').textContent= totAss;
+  document.getElementById('hr-s-absences').textContent= totAbs;
+  document.getElementById('hr-s-warn').textContent    = warnCount;
+  document.getElementById('hr-s-exc').textContent     = excCount;
+  document.getElementById('hr-stats-row').style.display = all.length ? '' : 'none';
+
+  const empty = document.getElementById('hr-empty');
+  const tbody = document.getElementById('hr-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  const balColor = b => b > 0 ? '#15803d' : b === 0 ? '#b45309' : '#b91c1c';
+
+  tbody.innerHTML = rows.map((r, i) => {
+    const badge = r.status==='exc'
+      ? `<span class="hr-badge-exc">❌ تجاوز الحد</span>`
+      : r.status==='warn'
+      ? `<span class="hr-badge-warn">⚠ تحذير</span>`
+      : `<span class="hr-badge-ok">✅ ضمن الحد</span>`;
+    const balance = threshold - r.absent;
+    const balStr = balance > 0 ? `+${balance}` : balance;
+    const nameEsc = escHtml(r.name).replace(/'/g, "\\'");
+    return `<tr>
+      <td style="text-align:center;color:#888">${i+1}</td>
+      <td style="text-align:center">
+        <button class="hr-flag${r.flagged?' on':''}" data-name="${escHtml(r.name)}"
+          onclick="toggleHRFlag('${nameEsc}')"
+          title="${r.flagged?'إلغاء التأشير':'تأشير للمتابعة'}">🚩</button>
+      </td>
+      <td><strong>${escHtml(r.name)}</strong></td>
+      <td style="font-size:11px;color:#555">${escHtml(r.dept)}</td>
+      <td style="font-size:11px">${escHtml(r.mtype)}</td>
+      <td style="text-align:center;font-weight:700">${r.total}</td>
+      <td style="text-align:center;color:#15803d;font-weight:700">${r.present}</td>
+      <td style="text-align:center;color:#b91c1c;font-weight:700">${r.absent}</td>
+      <td style="text-align:center;color:#64748b">${r.pending}</td>
+      <td style="text-align:center;font-weight:700;color:${r.rate>=80?'#15803d':r.rate>=60?'#b45309':'#b91c1c'}">${r.rate}%</td>
+      <td style="text-align:center;font-weight:800;color:${balColor(balance)}">${balStr}</td>
+      <td>${badge}</td>
+      <td><input class="hr-note-inp" type="text" value="${escHtml(r.note)}"
+           placeholder="ملاحظة..."
+           onchange="saveHRNote('${nameEsc}', this.value)"></td>
+    </tr>`;
+  }).join('');
+}
+
+function exportHRExcel() {
+  if (!_hrReport.length) { alert('لا توجد بيانات للتصدير — يجب أن تكون هناك سجلات حضور محفوظة أولاً'); return; }
+  const threshold = parseInt(document.getElementById('hr-threshold')?.value)||HR_SETTINGS.threshold||3;
+  const headers = ['#','الاسم','القسم','النوع','المكلَّف','حضر','غاب','لم يُسجَّل','الحضور%','الرصيد المتبقي','الحالة','مؤشَّر','ملاحظات HR'];
+  const rows = _hrReport.map((r, i) => {
+    const balance = threshold - r.absent;
+    const status = r.status==='exc'?'تجاوز الحد':r.status==='warn'?'تحذير':'ضمن الحد';
+    return [i+1, r.name, r.dept, r.mtype, r.total, r.present, r.absent, r.pending,
+            r.rate+'%', balance > 0 ? '+'+balance : balance, status, r.flagged?'نعم':'', r.note||''];
+  });
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  // Style header row width
+  ws['!cols'] = [4,25,15,10,9,8,8,10,10,12,14,8,25].map(w => ({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'تقرير الغياب');
+  const today = new Date().toLocaleDateString('ar-IQ');
+  XLSX.writeFile(wb, `تقرير_الغياب_${today.replace(/\//g,'-')}.xlsx`);
+  logActivity('تصدير تقرير HR Excel', `عدد التدريسيين: ${_hrReport.length} | الحد: ${threshold}`);
 }
 
 // ─────────────────────────────────────────
