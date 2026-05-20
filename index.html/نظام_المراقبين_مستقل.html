@@ -222,6 +222,15 @@ tr:hover td{background:#eef2ff}
 .hall-block.hall-mod .hall-hdr{background:#fef3c7!important}
 .tq-label{display:inline-block;background:#dc2626;color:#fff;font-size:9px;font-weight:800;padding:1px 7px;border-radius:20px;margin-right:5px;vertical-align:middle}
 .tq-his{background:#fee2e2!important}
+/* ── قاعدة البيانات / Data Source ── */
+.src-row{width:100%;display:flex;align-items:center;gap:12px;padding-bottom:9px;border-bottom:1px solid #dde1f0;margin-bottom:8px;flex-wrap:wrap}
+.src-lbl{font-size:12px;font-weight:700;color:#1e3a8a;white-space:nowrap}
+.src-radio-lbl{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;font-weight:700;color:#334155;padding:4px 10px;border:1.5px solid #c8cfe8;border-radius:20px;transition:all .15s;user-select:none}
+.src-radio-lbl:has(input:checked){background:#dbeafe;border-color:#3b82f6;color:#1e40af}
+.src-radio-lbl input{accent-color:#1e40af;cursor:pointer}
+.db-ok{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 11px;border-radius:20px;font-weight:700;background:#dcfce7;color:#14532d;border:1px solid #86efac;white-space:nowrap}
+.db-empty{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 11px;border-radius:20px;font-weight:700;background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;white-space:nowrap}
+.bdb{background:#0891b2;color:#fff;border-color:#0891b2}.bdb:hover{background:#0e7490}
 /* ── HR ── */
 .role-hr{background:#fef9c3;color:#713f12}
 .hr-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
@@ -325,27 +334,57 @@ tr:hover td{background:#eef2ff}
 </div>
 
 <!-- FILE LOADING -->
-<div class="load-panel">
-  <div class="fload">
-    <label>📋 ملف التدريسيين:</label>
-    <button class="pick" onclick="document.getElementById('f-staff').click()">اختر الملف</button>
-    <input type="file" id="f-staff" accept=".xlsx,.xls" onchange="loadStaffFile(this)">
-    <span id="st-staff" class="no">لم يُحمَّل</span>
-  </div>
-  <div style="width:1px;background:#e0e7ff;height:24px"></div>
-  <div class="fload">
-    <label>🏛 ملف القاعات:</label>
-    <button class="pick" onclick="document.getElementById('f-halls').click()">اختر الملف</button>
-    <input type="file" id="f-halls" accept=".xlsx,.xls" onchange="loadHallsFile(this)">
-    <span id="st-halls" class="no">لم يُحمَّل</span>
-  </div>
-  <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
-    <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#92400e;cursor:pointer">
-      احتياط:
-      <input type="number" id="reserve-count" value="30" min="1" max="200"
-             style="width:58px;font-size:13px;padding:4px 7px;border:1px solid #fed7aa;border-radius:6px">
+<div class="load-panel" style="flex-direction:column;align-items:stretch;gap:0">
+  <!-- ── مصدر البيانات ── -->
+  <div class="src-row" id="src-row">
+    <span class="src-lbl">🗄 مصدر البيانات:</span>
+    <label class="src-radio-lbl">
+      <input type="radio" name="data-src" value="db" id="src-db" onchange="switchDataSource('db')">
+      قاعدة البيانات المحفوظة
     </label>
-    <button class="btn bp" onclick="onBothLoaded()" id="btn-init" disabled>✔ تهيئة النظام</button>
+    <label class="src-radio-lbl">
+      <input type="radio" name="data-src" value="excel" id="src-excel" checked onchange="switchDataSource('excel')">
+      ملف Excel (جديد / طوارئ)
+    </label>
+    <span id="db-status-badge" class="db-empty">لا توجد قاعدة بيانات محفوظة</span>
+  </div>
+  <!-- ── مدخلات Excel ── -->
+  <div id="excel-inputs-row" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <div class="fload">
+      <label>📋 ملف التدريسيين:</label>
+      <button class="pick" onclick="document.getElementById('f-staff').click()">اختر الملف</button>
+      <input type="file" id="f-staff" accept=".xlsx,.xls" onchange="loadStaffFile(this)">
+      <span id="st-staff" class="no">لم يُحمَّل</span>
+    </div>
+    <div style="width:1px;background:#e0e7ff;height:24px"></div>
+    <div class="fload">
+      <label>🏛 ملف القاعات:</label>
+      <button class="pick" onclick="document.getElementById('f-halls').click()">اختر الملف</button>
+      <input type="file" id="f-halls" accept=".xlsx,.xls" onchange="loadHallsFile(this)">
+      <span id="st-halls" class="no">لم يُحمَّل</span>
+    </div>
+    <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#92400e;cursor:pointer">
+        احتياط:
+        <input type="number" id="reserve-count" value="30" min="1" max="200"
+               style="width:58px;font-size:13px;padding:4px 7px;border:1px solid #fed7aa;border-radius:6px">
+      </label>
+      <button class="btn bp" onclick="onBothLoaded()" id="btn-init" disabled>✔ تهيئة النظام</button>
+      <button class="btn bdb" id="btn-save-db" style="display:none" onclick="saveCurrentDB()">💾 حفظ قاعدة البيانات</button>
+    </div>
+  </div>
+  <!-- ── تهيئة من DB ── -->
+  <div id="db-init-row" style="display:none;align-items:center;gap:10px;flex-wrap:wrap">
+    <span id="db-info-text" style="font-size:12px;color:#555"></span>
+    <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#92400e;cursor:pointer">
+        احتياط:
+        <input type="number" id="reserve-count-db" value="30" min="1" max="200"
+               style="width:58px;font-size:13px;padding:4px 7px;border:1px solid #fed7aa;border-radius:6px">
+      </label>
+      <button class="btn bp" onclick="initFromDB()" id="btn-init-db">✔ تهيئة من قاعدة البيانات</button>
+      <button class="btn bdb" id="btn-save-db2" style="display:none" onclick="saveCurrentDB()">💾 حفظ قاعدة البيانات</button>
+    </div>
   </div>
 </div>
 
@@ -365,7 +404,7 @@ tr:hover td{background:#eef2ff}
 <!-- ══════════════════ DISTRIBUTION PANEL ══════════════════ -->
 <div class="panel on wrap" id="tab-dist">
   <div id="no-data-msg" class="alert ain">
-    ⬆ الرجاء تحميل ملفَي Excel أعلاه ثم الضغط على <strong>تهيئة النظام</strong>
+    ⬆ اختر مصدر البيانات أعلاه (قاعدة البيانات المحفوظة أو ملف Excel جديد) ثم اضغط على زر <strong>تهيئة النظام</strong>
   </div>
   <div id="dist-content" style="display:none">
     <!-- Stats -->
@@ -434,7 +473,10 @@ tr:hover td{background:#eef2ff}
 <!-- ══════════════════ STAFF PANEL ══════════════════ -->
 <div class="panel wrap" id="tab-staff">
   <div class="card">
-    <div class="ct">👥 قائمة التدريسيين</div>
+    <div class="ct">
+      <span>👥 قائمة التدريسيين</span>
+      <button class="btn bp" id="btn-add-staff" style="display:none;font-size:11px;padding:4px 12px" onclick="openStaffModal()">+ إضافة تدريسي</button>
+    </div>
     <div class="fbar">
       <input type="text" id="staff-search" placeholder="🔍 بحث بالاسم أو القسم..." oninput="renderStaffTable()" style="min-width:190px">
       <div class="dept-fw" id="dept-fw">
@@ -489,6 +531,7 @@ tr:hover td{background:#eef2ff}
             <th style="background:#fef3c7;color:#92400e">مرات المراقبة</th>
             <th style="background:#fef3c7;color:#92400e">آخر مراقبة</th>
             <th>الهاتف</th>
+            <th id="staff-th-actions" style="display:none">إجراءات</th>
           </tr>
         </thead>
         <tbody id="staff-tbody"></tbody>
@@ -501,10 +544,13 @@ tr:hover td{background:#eef2ff}
 <!-- ══════════════════ HALLS PANEL ══════════════════ -->
 <div class="panel wrap" id="tab-halls">
   <div class="card">
-    <div class="ct">🏛 قائمة القاعات</div>
+    <div class="ct">
+      <span>🏛 قائمة القاعات</span>
+      <button class="btn bp" id="btn-add-hall" style="display:none;font-size:11px;padding:4px 12px" onclick="openHallModal()">+ إضافة قاعة</button>
+    </div>
     <div style="overflow-x:auto">
       <table>
-        <thead><tr><th>#</th><th>اسم القاعة</th><th>عدد المراقبين المطلوب</th></tr></thead>
+        <thead><tr><th>#</th><th>اسم القاعة</th><th>عدد المراقبين المطلوب</th><th id="halls-th-actions" style="display:none">إجراءات</th></tr></thead>
         <tbody id="halls-tbody"></tbody>
       </table>
     </div>
@@ -673,6 +719,101 @@ tr:hover td{background:#eef2ff}
   </div>
 </div>
 
+<!-- ══ ADD/EDIT STAFF MODAL ══ -->
+<div class="auth-modal-ov" id="staff-modal">
+  <div class="auth-modal" style="max-width:620px;width:96vw;max-height:92vh;overflow-y:auto">
+    <h3 id="staff-modal-title">➕ إضافة تدريسي جديد</h3>
+    <input type="hidden" id="sm-id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="grid-column:1/-1">
+        <label class="auth-field-lbl">الاسم الكامل *</label>
+        <input class="auth-field" id="sm-name" type="text" placeholder="الاسم الثلاثي أو الرباعي">
+      </div>
+      <div>
+        <label class="auth-field-lbl">القسم</label>
+        <input class="auth-field" id="sm-dept" type="text" placeholder="اسم القسم">
+      </div>
+      <div>
+        <label class="auth-field-lbl">الكلية</label>
+        <input class="auth-field" id="sm-college" type="text" placeholder="اسم الكلية">
+      </div>
+      <div>
+        <label class="auth-field-lbl">نوع الدوام</label>
+        <select class="auth-field" id="sm-mtype">
+          <option value="ملاك">ملاك</option>
+          <option value="محاضر">محاضر</option>
+        </select>
+      </div>
+      <div>
+        <label class="auth-field-lbl">المنصب</label>
+        <select class="auth-field" id="sm-pos">
+          <option value="تدريسي">تدريسي</option>
+          <option value="تدريسية">تدريسية</option>
+          <option value="مقرر قسم">مقرر قسم</option>
+          <option value="رئيس قسم">رئيس قسم</option>
+          <option value="مقرر كلية">مقرر كلية</option>
+          <option value="عميد">عميد</option>
+          <option value="معاون عميد">معاون عميد</option>
+        </select>
+      </div>
+      <div>
+        <label class="auth-field-lbl">الجنس</label>
+        <select class="auth-field" id="sm-gender">
+          <option value="male">ذكر</option>
+          <option value="female">أنثى</option>
+        </select>
+      </div>
+      <div>
+        <label class="auth-field-lbl">رقم الهاتف</label>
+        <input class="auth-field" id="sm-phone" type="text" placeholder="07xx-xxx-xxxx">
+      </div>
+      <div style="grid-column:1/-1">
+        <label class="auth-field-lbl">أيام الدوام الأسبوعي</label>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" class="sm-day" value="السبت" checked> السبت</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" class="sm-day" value="الاحد" checked> الأحد</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" class="sm-day" value="الاثنين" checked> الاثنين</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" class="sm-day" value="الثلاثاء" checked> الثلاثاء</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" class="sm-day" value="الاربعاء" checked> الأربعاء</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" class="sm-day" value="الخميس" checked> الخميس</label>
+        </div>
+      </div>
+      <div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-top:4px">
+          <input type="checkbox" id="sm-committee" style="width:auto;accent-color:#0d1b6e">
+          عضو لجنة امتحانية
+        </label>
+      </div>
+      <div style="grid-column:1/-1">
+        <label class="auth-field-lbl">ملاحظات</label>
+        <input class="auth-field" id="sm-notes" type="text" placeholder="ملاحظات (يصلح تقويمي / لا يصلح تقويمي / ...)">
+      </div>
+    </div>
+    <div class="auth-msg" id="sm-msg"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <button class="btn" onclick="closeStaffModal()">إلغاء</button>
+      <button class="btn bp" onclick="doSaveStaff()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADD/EDIT HALL MODAL ══ -->
+<div class="auth-modal-ov" id="hall-modal">
+  <div class="auth-modal" style="max-width:380px;width:90vw">
+    <h3 id="hall-modal-title">➕ إضافة قاعة جديدة</h3>
+    <input type="hidden" id="hm-orig-name">
+    <label class="auth-field-lbl">اسم القاعة *</label>
+    <input class="auth-field" id="hm-name" type="text" placeholder="اسم القاعة">
+    <label class="auth-field-lbl">عدد المراقبين المطلوب</label>
+    <input class="auth-field" id="hm-monitors" type="number" value="2" min="1" max="20">
+    <div class="auth-msg" id="hm-msg"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="closeHallModal()">إلغاء</button>
+      <button class="btn bp" onclick="doSaveHall()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ ADD USER MODAL ══ -->
 <div class="auth-modal-ov" id="add-user-modal">
   <div class="auth-modal">
@@ -799,7 +940,7 @@ let FB_ACTIVITY        = [];
 
 async function loadFirebaseData() {
   // ── Load all docs in parallel ──
-  const [uSnap, pSnap, aSnap, rSnap, hSnap, attSnap, hrSnap, snSnap] = await Promise.all([
+  const [uSnap, pSnap, aSnap, rSnap, hSnap, attSnap, hrSnap, snSnap, sdbSnap, hdbSnap] = await Promise.all([
     db.collection('system').doc('users').get(),
     db.collection('system').doc('platform').get(),
     db.collection('system').doc('activity').get(),
@@ -808,6 +949,8 @@ async function loadFirebaseData() {
     db.collection('system').doc('attendance').get(),
     db.collection('system').doc('hr_settings').get(),
     db.collection('system').doc('staff_notes').get(),
+    db.collection('system').doc('staff_db').get(),
+    db.collection('system').doc('halls_db').get(),
   ]);
 
   // ── Users ──
@@ -855,6 +998,21 @@ async function loadFirebaseData() {
     STAFF_NOTES = snSnap.data().notes;
     lsSet(LS_STAFF_NOTES, STAFF_NOTES);
   }
+
+  // ── Staff DB ──
+  if (sdbSnap.exists && sdbSnap.data().list) {
+    STAFF_DB = sdbSnap.data().list;
+    lsSet(LS_STAFF_DB, STAFF_DB);
+  }
+
+  // ── Halls DB ──
+  if (hdbSnap.exists && hdbSnap.data().list) {
+    HALLS_DB = hdbSnap.data().list;
+    lsSet(LS_HALLS_DB, HALLS_DB);
+  }
+
+  // ── Update DB status badge ──
+  updateDBStatusBadge();
 
   // ── Real-time listeners ──
   db.collection('system').doc('users').onSnapshot(snap => {
@@ -933,6 +1091,35 @@ async function loadFirebaseData() {
     const sp = document.getElementById('tab-staff');
     if (sp && sp.classList.contains('on')) renderStaffTable();
   });
+
+  // ── Staff DB: real-time sync ──
+  db.collection('system').doc('staff_db').onSnapshot(snap => {
+    if (!snap.exists || !snap.data().list) return;
+    STAFF_DB = snap.data().list;
+    lsSet(LS_STAFF_DB, STAFF_DB);
+    updateDBStatusBadge();
+    // If currently using DB source, keep STAFF in sync
+    if (_dataSource === 'db') {
+      STAFF = STAFF_DB.map(s => Object.assign({}, s));
+      applyStaffNotesToLoaded();
+      const sp = document.getElementById('tab-staff');
+      if (sp && sp.classList.contains('on')) renderStaffTable();
+      updateAvailCount();
+    }
+  });
+
+  // ── Halls DB: real-time sync ──
+  db.collection('system').doc('halls_db').onSnapshot(snap => {
+    if (!snap.exists || !snap.data().list) return;
+    HALLS_DB = snap.data().list;
+    lsSet(LS_HALLS_DB, HALLS_DB);
+    updateDBStatusBadge();
+    if (_dataSource === 'db') {
+      HALLS = HALLS_DB.map(h => Object.assign({}, h));
+      buildHallGrid();
+      renderHallsTable();
+    }
+  });
 }
 
 function fbSaveUsers(users) {
@@ -964,6 +1151,14 @@ function fbSaveStaffNotes() {
   lsSet(LS_STAFF_NOTES, STAFF_NOTES);
   db.collection('system').doc('staff_notes').set({ notes: STAFF_NOTES }).catch(e => console.error('fbSaveStaffNotes', e));
 }
+function fbSaveStaffDB() {
+  lsSet(LS_STAFF_DB, STAFF_DB);
+  db.collection('system').doc('staff_db').set({ list: STAFF_DB }).catch(e => console.error('fbSaveStaffDB', e));
+}
+function fbSaveHallsDB() {
+  lsSet(LS_HALLS_DB, HALLS_DB);
+  db.collection('system').doc('halls_db').set({ list: HALLS_DB }).catch(e => console.error('fbSaveHallsDB', e));
+}
 
 // ─────────────────────────────────────────
 // CONSTANTS
@@ -985,6 +1180,8 @@ const LS_HISTORY    = 'fuc_monitor_history_v1';
 const LS_ATTENDANCE = 'fuc_attendance_v1';
 const LS_STAFF_NOTES = 'fuc_staff_notes_v1';
 const LS_HR         = 'fuc_hr_settings_v1';
+const LS_STAFF_DB   = 'fuc_staff_db_v1';
+const LS_HALLS_DB   = 'fuc_halls_db_v1';
 
 // ─────────────────────────────────────────
 // STATE
@@ -997,6 +1194,9 @@ let HISTORY    = lsGet(LS_HISTORY, {});
 let ATTENDANCE = lsGet(LS_ATTENDANCE, {});
 let STAFF_NOTES = lsGet(LS_STAFF_NOTES, {});
 let HR_SETTINGS = lsGet(LS_HR, { threshold: 3, notes: {}, flags: {} });
+let STAFF_DB    = lsGet(LS_STAFF_DB, []);   // permanent staff DB saved in Firebase
+let HALLS_DB    = lsGet(LS_HALLS_DB, []);   // permanent halls DB saved in Firebase
+let _dataSource = 'excel'; // 'excel' | 'db'
 let TAKMILI_HALLS = new Set();
 let _attRecId = null;
 let _hrReport = [];  // cached report data for filter/export
@@ -1097,6 +1297,7 @@ function processStaff(ws){
       has_notes:!!notes&&!isTqNote,
       is_takmili_preferred:notes==='يصلح تقويمي',
       is_takmili_excluded:notes==='لا يصلح تقويمي',
+      _id:'s_'+i+'_'+Date.now(),
       total_rank:typr+pr+tr};
   }).filter(s=>s.name&&s.name!=='nan');
 }
@@ -1139,6 +1340,277 @@ function setStatus(id,cls,txt){
 function checkBothLoaded(){
   document.getElementById('btn-init').disabled=!(staffWb&&hallsWb);
 }
+function updateDBStatusBadge() {
+  const badge = document.getElementById('db-status-badge');
+  const initBtn = document.getElementById('btn-init-db');
+  const infoTxt = document.getElementById('db-info-text');
+  if (!badge) return;
+  const hasDB = STAFF_DB.length > 0 && HALLS_DB.length > 0;
+  if (hasDB) {
+    badge.className = 'db-ok';
+    badge.textContent = `✔ قاعدة بيانات محفوظة: ${STAFF_DB.length} تدريسي، ${HALLS_DB.length} قاعة`;
+    if (infoTxt) infoTxt.textContent = `${STAFF_DB.length} تدريسي | ${HALLS_DB.length} قاعة`;
+    if (initBtn) initBtn.disabled = false;
+  } else {
+    badge.className = 'db-empty';
+    badge.textContent = 'لا توجد قاعدة بيانات محفوظة';
+    if (infoTxt) infoTxt.textContent = '';
+    if (initBtn) initBtn.disabled = true;
+  }
+}
+// ─────────────────────────────────────────
+// DATA SOURCE SWITCH
+// ─────────────────────────────────────────
+function switchDataSource(src) {
+  _dataSource = src;
+  const excelRow  = document.getElementById('excel-inputs-row');
+  const dbRow     = document.getElementById('db-init-row');
+  if (src === 'db') {
+    if (excelRow) excelRow.style.display = 'none';
+    if (dbRow)    dbRow.style.display    = 'flex';
+    updateDBStatusBadge();
+  } else {
+    if (excelRow) excelRow.style.display = '';
+    if (dbRow)    dbRow.style.display    = 'none';
+  }
+}
+
+function applyStaffNotesToLoaded() {
+  STAFF.forEach(s => {
+    if (STAFF_NOTES[s.name] !== undefined) {
+      const n = STAFF_NOTES[s.name];
+      s.notes = n;
+      const isTqN = n === 'يصلح تقويمي' || n === 'لا يصلح تقويمي';
+      s.has_notes = !!n && !isTqN;
+      s.is_takmili_preferred = n === 'يصلح تقويمي';
+      s.is_takmili_excluded  = n === 'لا يصلح تقويمي';
+    }
+  });
+}
+
+function initFromDB() {
+  if (!STAFF_DB.length || !HALLS_DB.length) {
+    alert('لا توجد قاعدة بيانات محفوظة. يرجى رفع ملف Excel أولاً وحفظ قاعدة البيانات.');
+    return;
+  }
+  const rc = parseInt(document.getElementById('reserve-count-db').value) || 30;
+  document.getElementById('reserve-count').value = rc;
+  STAFF = STAFF_DB.map(s => Object.assign({}, s));
+  HALLS = HALLS_DB.map(h => Object.assign({}, h));
+  applyStaffNotesToLoaded();
+  if (!STAFF.length) { alert('قاعدة البيانات لا تحتوي على بيانات تدريسيين'); return; }
+  if (!HALLS.length) { alert('قاعدة البيانات لا تحتوي على بيانات قاعات');    return; }
+  document.getElementById('no-data-msg').style.display = 'none';
+  document.getElementById('dist-content').style.display = 'block';
+  document.getElementById('hdr-counts').innerHTML = STAFF.length + ' تدريسي | ' + HALLS.length + ' قاعة';
+  document.getElementById('s-total').textContent = STAFF.length;
+  buildHallGrid();
+  const depts = [...new Set(STAFF.map(s => s.dept).filter(Boolean))].sort();
+  buildDeptCheckboxes(depts);
+  updateAvailCount();
+  renderStaffTable();
+  renderHallsTable();
+  updateRecordsBadge();
+  renderRecordsTab();
+  const saveBtn2 = document.getElementById('btn-save-db2');
+  if (saveBtn2) saveBtn2.style.display = '';
+  const sess = getSession();
+  if (sess && (sess.role==='admin' || sess.role==='distributor')) {
+    const addSBtn = document.getElementById('btn-add-staff');
+    const addHBtn = document.getElementById('btn-add-hall');
+    const thAct   = document.getElementById('halls-th-actions');
+    if (addSBtn) addSBtn.style.display = '';
+    if (addHBtn) addHBtn.style.display = '';
+    if (thAct)   thAct.style.display   = '';
+  }
+}
+
+function saveCurrentDB() {
+  if (!STAFF.length || !HALLS.length) {
+    alert('يجب تهيئة النظام أولاً قبل حفظ قاعدة البيانات'); return;
+  }
+  STAFF_DB = STAFF.map(s => Object.assign({}, s));
+  HALLS_DB = HALLS.map(h => Object.assign({}, h));
+  fbSaveStaffDB();
+  fbSaveHallsDB();
+  updateDBStatusBadge();
+  // Switch to DB source indicator
+  const dbRadio = document.getElementById('src-db');
+  if (dbRadio) { dbRadio.checked = true; switchDataSource('db'); }
+  alert('✔ تم حفظ قاعدة البيانات بنجاح! (' + STAFF_DB.length + ' تدريسي، ' + HALLS_DB.length + ' قاعة)');
+  logActivity('حفظ قاعدة البيانات', STAFF_DB.length + ' تدريسي | ' + HALLS_DB.length + ' قاعة');
+}
+
+// ─────────────────────────────────────────
+// STAFF CRUD
+// ─────────────────────────────────────────
+let _editStaffId = null;
+
+function openStaffModal(id) {
+  const sess = getSession();
+  if (!sess || (sess.role !== 'admin' && sess.role !== 'distributor')) return;
+  _editStaffId = id || null;
+  const modal = document.getElementById('staff-modal');
+  const title = document.getElementById('staff-modal-title');
+  const msg   = document.getElementById('sm-msg');
+  msg.textContent = ''; msg.className = 'auth-msg';
+  if (id) {
+    const s = STAFF.find(x => x._id === id || x.name === id);
+    if (!s) return;
+    title.textContent = '✏ تعديل بيانات التدريسي';
+    document.getElementById('sm-id').value      = s._id;
+    document.getElementById('sm-name').value    = s.name || '';
+    document.getElementById('sm-dept').value    = s.dept || '';
+    document.getElementById('sm-college').value = s.college || '';
+    document.getElementById('sm-mtype').value   = s.mtype || 'ملاك';
+    document.getElementById('sm-pos').value     = s.pos || 'تدريسي';
+    document.getElementById('sm-gender').value  = s.gender || 'male';
+    document.getElementById('sm-phone').value   = s.phone || '';
+    document.getElementById('sm-notes').value   = s.notes || '';
+    document.getElementById('sm-committee').checked = !!s.in_committee;
+    document.querySelectorAll('.sm-day').forEach(cb => {
+      cb.checked = (s.days || []).includes(cb.value);
+    });
+  } else {
+    title.textContent = '➕ إضافة تدريسي جديد';
+    document.getElementById('sm-id').value      = '';
+    document.getElementById('sm-name').value    = '';
+    document.getElementById('sm-dept').value    = '';
+    document.getElementById('sm-college').value = '';
+    document.getElementById('sm-mtype').value   = 'ملاك';
+    document.getElementById('sm-pos').value     = 'تدريسي';
+    document.getElementById('sm-gender').value  = 'male';
+    document.getElementById('sm-phone').value   = '';
+    document.getElementById('sm-notes').value   = '';
+    document.getElementById('sm-committee').checked = false;
+    document.querySelectorAll('.sm-day').forEach(cb => { cb.checked = true; });
+  }
+  modal.classList.add('show');
+}
+function closeStaffModal() {
+  document.getElementById('staff-modal').classList.remove('show');
+  _editStaffId = null;
+}
+function doSaveStaff() {
+  const msg  = document.getElementById('sm-msg');
+  const name = document.getElementById('sm-name').value.trim();
+  if (!name) { msg.textContent = '✗ الاسم مطلوب'; msg.className = 'auth-msg er'; return; }
+  const days = [...document.querySelectorAll('.sm-day:checked')].map(c => c.value);
+  if (!days.length) { msg.textContent = '✗ يجب اختيار يوم دوام واحد على الأقل'; msg.className = 'auth-msg er'; return; }
+  const notes = document.getElementById('sm-notes').value.trim();
+  const staffObj = {
+    _id: _editStaffId || Date.now().toString(),
+    name,
+    dept:         document.getElementById('sm-dept').value.trim(),
+    college:      document.getElementById('sm-college').value.trim(),
+    mtype:        document.getElementById('sm-mtype').value,
+    pos:          document.getElementById('sm-pos').value,
+    gender:       document.getElementById('sm-gender').value,
+    phone:        document.getElementById('sm-phone').value.trim(),
+    days,
+    in_committee: document.getElementById('sm-committee').checked,
+    notes,
+  };
+  // Derive title/rank info same as Excel import
+  const ti = getTitleInfo(name);
+  staffObj.title_code  = ti.code;
+  staffObj.title_rank  = ti.rank;
+  staffObj.has_phd     = ti.phd;
+  staffObj.pos_rank    = POS_RANK[staffObj.pos] ?? 1;
+  staffObj.type_rank   = staffObj.mtype === 'ملاك' ? 10 : 0;
+  staffObj.total_rank  = staffObj.type_rank + staffObj.pos_rank + ti.rank;
+  const isTqN = notes === 'يصلح تقويمي' || notes === 'لا يصلح تقويمي';
+  staffObj.has_notes            = !!notes && !isTqN;
+  staffObj.is_takmili_preferred = notes === 'يصلح تقويمي';
+  staffObj.is_takmili_excluded  = notes === 'لا يصلح تقويمي';
+  if (!staffObj.gender) staffObj.gender = guessGender(name);
+  if (_editStaffId) {
+    const idx = STAFF.findIndex(x => x._id === _editStaffId || x.name === _editStaffId);
+    if (idx >= 0) STAFF[idx] = staffObj;
+    const dIdx = STAFF_DB.findIndex(x => x._id === _editStaffId || x.name === _editStaffId);
+    if (dIdx >= 0) STAFF_DB[dIdx] = staffObj; else STAFF_DB.push(staffObj);
+  } else {
+    STAFF.push(staffObj);
+    STAFF_DB.push(staffObj);
+  }
+  fbSaveStaffDB();
+  // Sync notes map
+  if (notes) { STAFF_NOTES[name] = notes; fbSaveStaffNotes(); }
+  buildDeptCheckboxes([...new Set(STAFF.map(s => s.dept).filter(Boolean))].sort());
+  updateAvailCount();
+  renderStaffTable();
+  buildHallGrid();
+  msg.textContent = '✔ تم الحفظ'; msg.className = 'auth-msg ok';
+  setTimeout(closeStaffModal, 900);
+}
+function deleteStaff(id) {
+  if (!confirm('هل تريد حذف هذا التدريسي من القائمة؟')) return;
+  STAFF    = STAFF.filter(s => s._id !== id && s.name !== id);
+  STAFF_DB = STAFF_DB.filter(s => s._id !== id && s.name !== id);
+  fbSaveStaffDB();
+  buildDeptCheckboxes([...new Set(STAFF.map(s => s.dept).filter(Boolean))].sort());
+  updateAvailCount();
+  renderStaffTable();
+}
+
+// ─────────────────────────────────────────
+// HALLS CRUD
+// ─────────────────────────────────────────
+function openHallModal(origName) {
+  const sess = getSession();
+  if (!sess || (sess.role !== 'admin' && sess.role !== 'distributor')) return;
+  const modal = document.getElementById('hall-modal');
+  const title = document.getElementById('hall-modal-title');
+  const msg   = document.getElementById('hm-msg');
+  msg.textContent = ''; msg.className = 'auth-msg';
+  document.getElementById('hm-orig-name').value = origName || '';
+  if (origName) {
+    const h = HALLS.find(x => x.name === origName);
+    title.textContent = '✏ تعديل القاعة';
+    document.getElementById('hm-name').value     = h ? h.name : origName;
+    document.getElementById('hm-monitors').value = h ? h.monitors_needed : 2;
+  } else {
+    title.textContent = '➕ إضافة قاعة جديدة';
+    document.getElementById('hm-name').value     = '';
+    document.getElementById('hm-monitors').value = 2;
+  }
+  modal.classList.add('show');
+}
+function closeHallModal() { document.getElementById('hall-modal').classList.remove('show'); }
+function doSaveHall() {
+  const msg      = document.getElementById('hm-msg');
+  const name     = document.getElementById('hm-name').value.trim();
+  const monitors = parseInt(document.getElementById('hm-monitors').value) || 2;
+  const origName = document.getElementById('hm-orig-name').value.trim();
+  if (!name) { msg.textContent = '✗ اسم القاعة مطلوب'; msg.className = 'auth-msg er'; return; }
+  if (!origName && HALLS.some(h => h.name === name)) {
+    msg.textContent = '✗ هذه القاعة موجودة بالفعل'; msg.className = 'auth-msg er'; return;
+  }
+  if (origName) {
+    const idx = HALLS.findIndex(h => h.name === origName);
+    if (idx >= 0) HALLS[idx] = { name, monitors_needed: monitors };
+    const dIdx = HALLS_DB.findIndex(h => h.name === origName);
+    if (dIdx >= 0) HALLS_DB[dIdx] = { name, monitors_needed: monitors }; else HALLS_DB.push({ name, monitors_needed: monitors });
+  } else {
+    const hObj = { name, monitors_needed: monitors };
+    HALLS.push(hObj);
+    HALLS_DB.push(hObj);
+  }
+  fbSaveHallsDB();
+  buildHallGrid();
+  renderHallsTable();
+  msg.textContent = '✔ تم الحفظ'; msg.className = 'auth-msg ok';
+  setTimeout(closeHallModal, 900);
+}
+function deleteHall(name) {
+  if (!confirm('هل تريد حذف هذه القاعة؟')) return;
+  HALLS     = HALLS.filter(h => h.name !== name);
+  HALLS_DB  = HALLS_DB.filter(h => h.name !== name);
+  fbSaveHallsDB();
+  buildHallGrid();
+  renderHallsTable();
+}
+
 function onBothLoaded(){
   try{
     const ss=staffWb.Sheets['الملاك']||staffWb.Sheets[staffWb.SheetNames[0]];
@@ -1168,6 +1640,18 @@ function onBothLoaded(){
     renderHallsTable();
     updateRecordsBadge();
     renderRecordsTab();
+    // Show the "save DB" button after successful Excel init
+    const saveBtn = document.getElementById('btn-save-db');
+    if (saveBtn) saveBtn.style.display = '';
+    const sess = getSession();
+    if (sess && (sess.role==='admin' || sess.role==='distributor')) {
+      const addSBtn = document.getElementById('btn-add-staff');
+      const addHBtn = document.getElementById('btn-add-hall');
+      const thAct   = document.getElementById('halls-th-actions');
+      if (addSBtn) addSBtn.style.display = '';
+      if (addHBtn) addHBtn.style.display = '';
+      if (thAct)   thAct.style.display   = '';
+    }
   }catch(e){alert('خطأ: '+e.message);console.error(e);}
 }
 
@@ -2070,6 +2554,12 @@ function resetPosChips(){
   renderStaffTable();
 }
 function renderStaffTable(){
+  const sess = getSession();
+  const canEdit = sess && (sess.role==='admin' || sess.role==='distributor');
+  const thAct = document.getElementById('staff-th-actions');
+  if (thAct) thAct.style.display = canEdit ? '' : 'none';
+  const addSBtn = document.getElementById('btn-add-staff');
+  if (addSBtn) addSBtn.style.display = canEdit && STAFF.length ? '' : 'none';
   const q=document.getElementById('staff-search').value.trim().toLowerCase();
   const deptMode=document.querySelector('input[name=dept-mode]:checked')?.value||'include';
   const deptCbs=[...document.querySelectorAll('#dept-cb-list input[type=checkbox]')];
@@ -2078,7 +2568,6 @@ function renderStaffTable(){
   const type=document.getElementById('staff-filt-type').value;
   const gender=document.getElementById('staff-filt-gender').value;
   const sort=document.getElementById('staff-sort').value;
-  // Build active positions set from chips
   const chips=[...document.querySelectorAll('.pos-chip')];
   const allOn=chips.every(c=>c.classList.contains('on'));
   let activePosSet=null;
@@ -2108,17 +2597,23 @@ function renderStaffTable(){
     const countStyle=h.count>5?'font-weight:800;color:#dc2626':h.count>0?'font-weight:700;color:#92400e':'color:#94a3b8';
     const tqCount=h.takmiliCount||0;
     const tqCell=tqCount>0?` <span style="background:#dc2626;color:#fff;border-radius:10px;padding:0 5px;font-size:9px;font-weight:800">ت×${tqCount}</span>`:'';
+    const actions = canEdit
+      ? `<td style="white-space:nowrap">
+           <button class="btn" style="font-size:10px;padding:2px 7px;color:#1e3a8a;border-color:#a5b4fc" onclick="openStaffModal('${escHtml(s._id||s.name)}')">✏</button>
+           <button class="btn br" style="font-size:10px;padding:2px 7px" onclick="deleteStaff('${escHtml(s._id||s.name)}')">🗑</button>
+         </td>`
+      : '';
     return `<tr>
       <td>${i+1}</td>
       <td>
         <strong style="cursor:pointer;text-decoration:underline dotted;color:#0d1b6e"
           onclick="openHistPopupByName('${escHtml(s.name)}',event)">${s.name}</strong>
       </td>
-      <td>${s.college}</td><td>${s.dept}</td><td>${lbl}</td>
+      <td>${escHtml(s.college)}</td><td>${escHtml(s.dept)}</td><td>${lbl}</td>
       <td><span class="bx ${tCls}">${s.mtype}</span></td>
       <td>${g}</td>
-      <td style="font-size:11px;white-space:nowrap">${s.pos||'—'}</td>
-      <td style="font-size:11px">${s.days.join('، ')}</td>
+      <td style="font-size:11px;white-space:nowrap">${escHtml(s.pos||'—')}</td>
+      <td style="font-size:11px">${(s.days||[]).join('، ')}</td>
       <td>${s.in_committee?'✔':''} ${comm}</td>
       <td style="white-space:nowrap">
         ${s.is_takmili_preferred?`<span style="background:#dcfce7;color:#166534;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:800;border:1px solid #86efac">✅ يصلح تقويمي</span> `:
@@ -2128,7 +2623,8 @@ function renderStaffTable(){
       </td>
       <td style="${countStyle};text-align:center">${h.count}${tqCell}</td>
       <td style="font-size:11px;color:#555">${lastStr}</td>
-      <td>${s.phone||'—'}</td>
+      <td>${escHtml(s.phone||'—')}</td>
+      ${actions}
     </tr>`;
   }).join('');
   document.getElementById('staff-count').textContent=`يُعرض ${filtered.length} من ${STAFF.length} تدريسي`;
@@ -2141,9 +2637,19 @@ function openHistPopupByName(name,event){
 // HALLS TABLE
 // ─────────────────────────────────────────
 function renderHallsTable(){
-  document.getElementById('halls-tbody').innerHTML=HALLS.map((h,i)=>
-    `<tr><td>${i+1}</td><td><strong>${h.name}</strong></td><td>${h.monitors_needed}</td></tr>`
-  ).join('');
+  const sess = getSession();
+  const canEdit = sess && (sess.role==='admin' || sess.role==='distributor');
+  const thAct = document.getElementById('halls-th-actions');
+  if (thAct) thAct.style.display = canEdit ? '' : 'none';
+  document.getElementById('halls-tbody').innerHTML=HALLS.map((h,i)=>{
+    const actions = canEdit
+      ? `<td style="white-space:nowrap">
+           <button class="btn" style="font-size:10px;padding:2px 7px;color:#1e3a8a;border-color:#a5b4fc" onclick="openHallModal('${escHtml(h.name)}')">✏</button>
+           <button class="btn br" style="font-size:10px;padding:2px 7px" onclick="deleteHall('${escHtml(h.name)}')">🗑</button>
+         </td>`
+      : '';
+    return `<tr><td>${i+1}</td><td><strong>${escHtml(h.name)}</strong></td><td>${h.monitors_needed}</td>${actions}</tr>`;
+  }).join('');
 }
 
 // ─────────────────────────────────────────
@@ -2322,6 +2828,21 @@ function applyRoleUI(role) {
   // Hide "إضافة مستخدم" button for non-admin
   const addUserBtn = document.getElementById('btn-add-user');
   if (addUserBtn) addUserBtn.style.display = (role==='admin') ? '' : 'none';
+
+  // Show data source row only for admin/distributor
+  const srcRow = document.getElementById('src-row');
+  if (srcRow) srcRow.style.display = (role==='admin' || role==='distributor') ? '' : 'none';
+
+  // Add-staff / add-hall buttons shown only when data is loaded & user has rights
+  const canEdit = (role==='admin' || role==='distributor') && STAFF.length > 0;
+  const addSBtn = document.getElementById('btn-add-staff');
+  const addHBtn = document.getElementById('btn-add-hall');
+  const thAct   = document.getElementById('halls-th-actions');
+  const stThAct = document.getElementById('staff-th-actions');
+  if (addSBtn) addSBtn.style.display = canEdit ? '' : 'none';
+  if (addHBtn) addHBtn.style.display = canEdit ? '' : 'none';
+  if (thAct)   thAct.style.display   = canEdit ? '' : 'none';
+  if (stThAct) stThAct.style.display = canEdit ? '' : 'none';
 
   if (role === 'attendance') {
     // Hide all other tabs, show only attendance tab
@@ -3627,7 +4148,10 @@ initLogo();
     RECORDS    = lsGet(LS_RECORDS, []);
     HISTORY    = lsGet(LS_HISTORY, {});
     ATTENDANCE = lsGet(LS_ATTENDANCE, {});
+    STAFF_DB   = lsGet(LS_STAFF_DB, []);
+    HALLS_DB   = lsGet(LS_HALLS_DB, []);
   }
+  updateDBStatusBadge();
   document.getElementById('fb-loading').style.display = 'none';
   // ── Attendance button delegation — document-level, added once ──
   document.addEventListener('click', function(e) {
