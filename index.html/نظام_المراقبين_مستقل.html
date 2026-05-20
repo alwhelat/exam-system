@@ -799,7 +799,7 @@ let FB_ACTIVITY        = [];
 
 async function loadFirebaseData() {
   // ── Load all docs in parallel ──
-  const [uSnap, pSnap, aSnap, rSnap, hSnap, attSnap, hrSnap] = await Promise.all([
+  const [uSnap, pSnap, aSnap, rSnap, hSnap, attSnap, hrSnap, snSnap] = await Promise.all([
     db.collection('system').doc('users').get(),
     db.collection('system').doc('platform').get(),
     db.collection('system').doc('activity').get(),
@@ -807,6 +807,7 @@ async function loadFirebaseData() {
     db.collection('system').doc('history').get(),
     db.collection('system').doc('attendance').get(),
     db.collection('system').doc('hr_settings').get(),
+    db.collection('system').doc('staff_notes').get(),
   ]);
 
   // ── Users ──
@@ -847,6 +848,12 @@ async function loadFirebaseData() {
     lsSet(LS_HR, HR_SETTINGS);
   } else {
     HR_SETTINGS = lsGet(LS_HR, { threshold: 3, notes: {}, flags: {} });
+  }
+
+  // ── Staff Notes ──
+  if (snSnap.exists && snSnap.data().notes) {
+    STAFF_NOTES = snSnap.data().notes;
+    lsSet(LS_STAFF_NOTES, STAFF_NOTES);
   }
 
   // ── Real-time listeners ──
@@ -905,6 +912,27 @@ async function loadFirebaseData() {
     const hrp = document.getElementById('tab-hr');
     if (hrp && hrp.classList.contains('on')) renderHRTab();
   });
+
+  // ── Staff Notes: real-time sync across all users ──
+  db.collection('system').doc('staff_notes').onSnapshot(snap => {
+    if (!snap.exists || !snap.data().notes) return;
+    const remote = snap.data().notes;
+    STAFF_NOTES = remote;
+    lsSet(LS_STAFF_NOTES, STAFF_NOTES);
+    // Re-apply notes to loaded STAFF array so distribution reflects changes
+    STAFF.forEach(s => {
+      if (STAFF_NOTES[s.name] !== undefined) {
+        const n = STAFF_NOTES[s.name];
+        s.notes = n;
+        const isTqN = n === 'يصلح تقويمي' || n === 'لا يصلح تقويمي';
+        s.has_notes = !!n && !isTqN;
+        s.is_takmili_preferred = n === 'يصلح تقويمي';
+        s.is_takmili_excluded  = n === 'لا يصلح تقويمي';
+      }
+    });
+    const sp = document.getElementById('tab-staff');
+    if (sp && sp.classList.contains('on')) renderStaffTable();
+  });
 }
 
 function fbSaveUsers(users) {
@@ -931,6 +959,10 @@ function fbSaveAttendance(att) {
 function fbSaveHRSettings() {
   lsSet(LS_HR, HR_SETTINGS);
   db.collection('system').doc('hr_settings').set(HR_SETTINGS).catch(e => console.error('fbSaveHR', e));
+}
+function fbSaveStaffNotes() {
+  lsSet(LS_STAFF_NOTES, STAFF_NOTES);
+  db.collection('system').doc('staff_notes').set({ notes: STAFF_NOTES }).catch(e => console.error('fbSaveStaffNotes', e));
 }
 
 // ─────────────────────────────────────────
@@ -1897,7 +1929,7 @@ function closeNotePopup() {
 function applyNote(note) {
   if (!_noteTarget) return;
   STAFF_NOTES[_noteTarget] = note;
-  lsSet(LS_STAFF_NOTES, STAFF_NOTES);
+  fbSaveStaffNotes();
   const s = STAFF.find(st => st.name === _noteTarget);
   if (s) {
     s.notes = note;
